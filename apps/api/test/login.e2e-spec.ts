@@ -30,7 +30,7 @@ describe('POST /api/v1/auth/login (US2)', () => {
     expect(res.body.expiresIn).toBe(900);
 
     const payload = JSON.parse(
-      Buffer.from(res.body.accessToken.split('.')[1], 'base64').toString('utf8'),
+      Buffer.from(res.body.accessToken.split('.')[1], 'base64url').toString('utf8'),
     );
     expect(payload.sub).toBeDefined();
   });

@@ -225,15 +225,18 @@ export class AuthService {
       throw invalid;
     }
 
-    // Atomically supersede the current token. If another concurrent refresh won
-    // the race, this returns false → treat as reuse and revoke the chain.
+    // Create the replacement session FIRST, then atomically claim the presented
+    // token. If the claim fails, a concurrent refresh already rotated it → reuse:
+    // revoke the whole chain, which now includes the session we just created, so
+    // no rotated session can survive the race (no cross-request transaction needed).
+    const pair = await this.issueSession(accountId, session.rotationChainId);
     const superseded = await this.sessions.revokeByIdIfActive(session.id);
     if (!superseded) {
       await this.sessions.revokeChain(session.rotationChainId);
       this.logger.warn(`refresh.reuse_detected chain=${session.rotationChainId}`);
       throw invalid;
     }
-    return this.issueSession(accountId, session.rotationChainId);
+    return pair;
   }
 
   /**

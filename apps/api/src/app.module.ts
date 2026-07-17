@@ -13,6 +13,7 @@ import { MailModule } from './mail/mail.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // Baseline rate limiting (FR-013/FR-026); per-route overrides added per story.
+    // @nestjs/throttler v6 expects `ttl` in milliseconds, matching THROTTLE.ttlMs.
     ThrottlerModule.forRoot([{ ttl: THROTTLE.ttlMs, limit: THROTTLE.limit }]),
     DatabaseModule,
     AccountsModule,
