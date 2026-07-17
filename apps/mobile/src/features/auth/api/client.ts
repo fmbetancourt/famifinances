@@ -1,6 +1,7 @@
 import type {
   AccountSummary,
   EmailRequest,
+  FieldError,
   LoginRequest,
   RefreshRequest,
   RegisterRequest,
@@ -14,10 +15,18 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    // Structured field errors (e.g. which password rule failed, FR-002); empty
+    // for generic errors. Mirrors the API's ValidationErrorBody.errors.
+    readonly fieldErrors: FieldError[] = [],
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+interface ErrorPayload {
+  message?: string;
+  errors?: FieldError[];
 }
 
 async function postJson<TBody, TResponse>(path: string, body: TBody): Promise<TResponse> {
@@ -26,9 +35,9 @@ async function postJson<TBody, TResponse>(path: string, body: TBody): Promise<TR
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const payload = (await response.json().catch(() => ({}))) as { message?: string };
+  const payload = (await response.json().catch(() => ({}))) as ErrorPayload;
   if (!response.ok) {
-    throw new ApiError(payload.message ?? 'Request failed', response.status);
+    throw new ApiError(payload.message ?? 'Request failed', response.status, payload.errors ?? []);
   }
   return payload as TResponse;
 }

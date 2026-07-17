@@ -80,6 +80,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TokenPair' }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '401':
           description: Expired, revoked, or reused refresh token. Reuse revokes the chain.
           content:
@@ -99,6 +100,7 @@ paths:
             schema: { $ref: '#/components/schemas/RefreshRequest' }
       responses:
         '204': { description: Session revoked; refresh token can no longer be used. }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /auth/me:
@@ -133,10 +135,15 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AccountSummary' }
         '400':
-          description: Invalid, expired, or already-used code (FR-020).
+          description: >
+            Invalid, expired, or already-used code (GenericError), or a malformed
+            code that fails DTO validation (ValidationErrorBody) (FR-020).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/GenericError' }
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
@@ -166,6 +173,7 @@ paths:
           description: >
             Uniform response whether or not the email is registered (FR-022, SC-011).
             A code is sent only if the account exists.
+        '400': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
   /auth/password/reset/confirm:
@@ -184,10 +192,15 @@ paths:
             Password updated. All existing sessions revoked (FR-024) and email marked
             verified (FR-025). Client must sign in again.
         '400':
-          description: Invalid/expired/used code or weak new password.
+          description: >
+            Invalid/expired/used code (GenericError) or failed input/password-policy
+            validation (ValidationErrorBody).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/GenericError' }
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
         '429': { $ref: '#/components/responses/RateLimited' }
 
 components:
