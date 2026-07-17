@@ -100,6 +100,54 @@ export class AuthService {
   }
 
   /**
+   * US7 · Request a password reset (FR-022). Always resolves the same way whether
+   * or not the email is registered (no enumeration); a code is emailed only when
+   * the account exists.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const account = await this.accounts.findByEmail(email);
+    if (!account) {
+      return;
+    }
+    const code = await this.codes.issue(account.id, 'password_reset');
+    await this.mail.send({
+      to: account.email,
+      subject: 'Reset your FamiFinances password',
+      body: `Your FamiFinances password reset code is ${code}. It expires shortly.`,
+    });
+  }
+
+  /**
+   * US7 · Confirm a password reset (FR-023, FR-024, FR-025). Sets the new password
+   * (subject to the strength policy), revokes ALL active sessions, and marks the
+   * email verified (consuming the emailed code proves inbox control).
+   */
+  async confirmPasswordReset(email: string, code: string, newPassword: string): Promise<void> {
+    const invalid = new BadRequestException('Invalid or expired code.');
+
+    // Validate the new password first so a weak password never consumes the code.
+    const failures = evaluatePasswordPolicy(newPassword);
+    if (failures.length > 0) {
+      throw new BadRequestException({ message: failures });
+    }
+
+    const account = await this.accounts.findByEmail(email);
+    if (!account) {
+      throw invalid;
+    }
+    const verified = await this.codes.verify(account.id, 'password_reset', code);
+    if (!verified) {
+      throw invalid;
+    }
+
+    const passwordHash = await this.passwords.hash(newPassword);
+    await this.accounts.updatePassword(account.id, passwordHash);
+    await this.accounts.markEmailVerified(account.id);
+    await this.sessions.revokeAllForAccount(account.id);
+    this.logger.log(`account.password_reset id=${account.id}`);
+  }
+
+  /**
    * US2 · Sign in (FR-006, FR-007, FR-013, FR-014). Failures return a uniform
    * message so unknown-email and wrong-password are indistinguishable (no
    * enumeration). On success, issues a short-lived access token plus a rotating

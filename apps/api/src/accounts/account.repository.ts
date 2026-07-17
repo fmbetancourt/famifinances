@@ -71,4 +71,8 @@ export class AccountRepository {
   async markEmailVerified(id: string): Promise<void> {
     await this.model.updateOne({ _id: id }, { $set: { emailVerified: true } }).exec();
   }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await this.model.updateOne({ _id: id }, { $set: { passwordHash } }).exec();
+  }
 }

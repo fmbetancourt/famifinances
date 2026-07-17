@@ -226,17 +226,17 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 ### Tests for User Story 7 ⚠️ (write first, must fail)
 
-- [ ] T064 [P] [US7] Contract/e2e test for `POST /auth/password/reset/request` uniform response (registered == unregistered) in `apps/api/test/reset-request.e2e-spec.ts`
-- [ ] T065 [P] [US7] Integration test for `reset/confirm`: revokes all sessions + marks verified + old tokens 401 in `apps/api/test/reset-confirm.e2e-spec.ts`
-- [ ] T066 [P] [US7] Integration test for invalid/expired/used reset code → 400 in `apps/api/test/reset-invalid.e2e-spec.ts`
+- [X] T064 [P] [US7] Contract/e2e test for `POST /auth/password/reset/request` uniform response (registered == unregistered) in `apps/api/test/reset-request.e2e-spec.ts`
+- [X] T065 [P] [US7] Integration test for `reset/confirm`: revokes all sessions + marks verified + old tokens 401 in `apps/api/test/reset-confirm.e2e-spec.ts`
+- [X] T066 [P] [US7] Integration test for invalid/expired/used reset code → 400 in `apps/api/test/reset-invalid.e2e-spec.ts`
 
 ### Implementation for User Story 7
 
-- [ ] T067 [P] [US7] Create `EmailDto` and `ResetConfirmDto` in `apps/api/src/auth/dto/reset.dto.ts`
-- [ ] T068 [US7] Implement `AuthService.requestPasswordReset` (uniform response; issue reset code via MailPort only if account exists) in `apps/api/src/auth/auth.service.ts`
-- [ ] T069 [US7] Implement `AuthService.confirmPasswordReset` (validate code, enforce strength, set new hash, revoke all sessions, mark verified) in `apps/api/src/auth/auth.service.ts`
-- [ ] T070 [US7] Implement `POST /auth/password/reset/request` and `POST /auth/password/reset/confirm` in `apps/api/src/auth/auth.controller.ts`
-- [ ] T071 [P] [US7] Mobile forgot-password + reset-password screens (request + OTP + new password) in `apps/mobile/app/(auth)/forgot-password.tsx` and `apps/mobile/app/(auth)/reset-password.tsx`
+- [X] T067 [P] [US7] Create `EmailDto` and `ResetConfirmDto` in `apps/api/src/auth/dto/reset.dto.ts`
+- [X] T068 [US7] Implement `AuthService.requestPasswordReset` (uniform response; issue reset code via MailPort only if account exists) in `apps/api/src/auth/auth.service.ts`
+- [X] T069 [US7] Implement `AuthService.confirmPasswordReset` (validate code, enforce strength, set new hash, revoke all sessions, mark verified) in `apps/api/src/auth/auth.service.ts`
+- [X] T070 [US7] Implement `POST /auth/password/reset/request` and `POST /auth/password/reset/confirm` in `apps/api/src/auth/auth.controller.ts`
+- [X] T071 [P] [US7] Mobile forgot-password + reset-password screens (request + OTP + new password) in `apps/mobile/app/(auth)/forgot-password.tsx` and `apps/mobile/app/(auth)/reset-password.tsx`
 
 **Checkpoint**: All user stories independently functional.
 

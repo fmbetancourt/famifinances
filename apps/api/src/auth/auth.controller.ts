@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -12,6 +13,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { CodeDto } from './dto/code.dto';
+import { EmailDto, ResetConfirmDto } from './dto/reset.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './types/authenticated-user';
@@ -69,6 +71,24 @@ export class AuthController {
   @ApiBearerAuth()
   async resendVerification(@CurrentUser() user: AuthenticatedUser): Promise<void> {
     await this.auth.resendVerification(user.accountId);
+  }
+
+  @Post('password/reset/request')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiAcceptedResponse({
+    description: 'Uniform response whether or not the email is registered (no enumeration).',
+  })
+  async requestPasswordReset(@Body() dto: EmailDto): Promise<void> {
+    await this.auth.requestPasswordReset(dto.email);
+  }
+
+  @Post('password/reset/confirm')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({
+    description: 'Password updated; all sessions revoked and email marked verified.',
+  })
+  async confirmPasswordReset(@Body() dto: ResetConfirmDto): Promise<void> {
+    await this.auth.confirmPasswordReset(dto.email, dto.code, dto.newPassword);
   }
 
   @Get('me')

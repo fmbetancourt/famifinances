@@ -1,8 +1,10 @@
 import type {
   AccountSummary,
+  EmailRequest,
   LoginRequest,
   RefreshRequest,
   RegisterRequest,
+  ResetConfirmRequest,
   TokenPair,
 } from '@famifinances/contracts';
 import { getAccessToken } from '../storage/secure-token-store';
@@ -42,6 +44,14 @@ export function login(input: LoginRequest): Promise<TokenPair> {
 
 export function refreshSession(refreshToken: string): Promise<TokenPair> {
   return postJson<RefreshRequest, TokenPair>('/auth/token/refresh', { refreshToken });
+}
+
+export function requestPasswordReset(input: EmailRequest): Promise<void> {
+  return postJson<EmailRequest, void>('/auth/password/reset/request', input);
+}
+
+export function confirmPasswordReset(input: ResetConfirmRequest): Promise<void> {
+  return postJson<ResetConfirmRequest, void>('/auth/password/reset/confirm', input);
 }
 
 /** Authenticated GET: attaches the stored bearer access token. */
