@@ -100,18 +100,18 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 ### Tests for User Story 2 ⚠️ (write first, must fail)
 
-- [ ] T028 [P] [US2] Contract/e2e test for `POST /auth/login` (200 pair; unknown email == wrong password 401) in `apps/api/test/login.e2e-spec.ts`
-- [ ] T029 [P] [US2] Unit test for `TokenService` (access sign/verify, refresh hash + rotation) in `apps/api/src/auth/services/token.service.spec.ts`
-- [ ] T030 [P] [US2] Integration test for per-account lockout after failed attempts in `apps/api/test/login-lockout.e2e-spec.ts`
+- [X] T028 [P] [US2] Contract/e2e test for `POST /auth/login` (200 pair; unknown email == wrong password 401) in `apps/api/test/login.e2e-spec.ts`
+- [X] T029 [P] [US2] Unit test for `TokenService` (access sign/verify, refresh hash + rotation) in `apps/api/src/auth/services/token.service.spec.ts`
+- [X] T030 [P] [US2] Integration test for per-account lockout after failed attempts in `apps/api/test/login-lockout.e2e-spec.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T031 [P] [US2] Create `RefreshSession` schema + repository (tokenHash [SHA-256], rotationChainId, expiresAt TTL, revokedAt) in `apps/api/src/sessions/refresh-session.schema.ts`
-- [ ] T032 [US2] Define `TokenPort` and implement `TokenService` (JWT access [HS256], opaque refresh [SHA-256 hashed], rotation, rotation-chain ids) in `apps/api/src/auth/services/token.service.ts`
-- [ ] T033 [P] [US2] Create `LoginDto` in `apps/api/src/auth/dto/login.dto.ts`
-- [ ] T034 [US2] Implement `AuthService.login` (verify password, lockout counters, issue token pair, persist session) in `apps/api/src/auth/auth.service.ts`
-- [ ] T035 [US2] Implement `POST /auth/login` in `apps/api/src/auth/auth.controller.ts`
-- [ ] T036 [P] [US2] Mobile sign-in screen + persist tokens via secure store in `apps/mobile/app/(auth)/sign-in.tsx`
+- [X] T031 [P] [US2] Create `RefreshSession` schema + repository (tokenHash [SHA-256], rotationChainId, expiresAt TTL, revokedAt) in `apps/api/src/sessions/refresh-session.schema.ts`
+- [X] T032 [US2] Define `TokenPort` and implement `TokenService` (JWT access [HS256], opaque refresh [SHA-256 hashed], rotation, rotation-chain ids) in `apps/api/src/auth/services/token.service.ts`
+- [X] T033 [P] [US2] Create `LoginDto` in `apps/api/src/auth/dto/login.dto.ts`
+- [X] T034 [US2] Implement `AuthService.login` (verify password, lockout counters, issue token pair, persist session) in `apps/api/src/auth/auth.service.ts`
+- [X] T035 [US2] Implement `POST /auth/login` in `apps/api/src/auth/auth.controller.ts`
+- [X] T036 [P] [US2] Mobile sign-in screen + persist tokens via secure store in `apps/mobile/app/(auth)/sign-in.tsx`
 
 **Checkpoint**: Register + sign-in work end to end.
 

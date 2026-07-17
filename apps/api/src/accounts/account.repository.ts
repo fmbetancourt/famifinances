@@ -8,6 +8,10 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** Lockout policy (FR-013). Tunable in the hardening pass (T075). */
+export const MAX_FAILED_LOGINS = 5;
+export const LOCK_WINDOW_MS = 15 * 60 * 1000;
+
 export interface CreateAccountInput {
   email: string;
   passwordHash: string;
@@ -35,5 +39,32 @@ export class AccountRepository {
       failedLoginCount: 0,
       lockedUntil: null,
     });
+  }
+
+  async findById(id: string): Promise<AccountDocument | null> {
+    return this.model.findById(id).exec();
+  }
+
+  /**
+   * Records a failed sign-in. Once the threshold is reached the account is
+   * locked for a fixed window and the counter resets (FR-013).
+   */
+  async registerFailedLogin(id: string): Promise<void> {
+    const account = await this.model.findById(id).exec();
+    if (!account) {
+      return;
+    }
+    account.failedLoginCount += 1;
+    if (account.failedLoginCount >= MAX_FAILED_LOGINS) {
+      account.lockedUntil = new Date(Date.now() + LOCK_WINDOW_MS);
+      account.failedLoginCount = 0;
+    }
+    await account.save();
+  }
+
+  async clearFailedLogin(id: string): Promise<void> {
+    await this.model
+      .updateOne({ _id: id }, { $set: { failedLoginCount: 0, lockedUntil: null } })
+      .exec();
   }
 }
