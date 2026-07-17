@@ -1,12 +1,13 @@
 import type {
   AccountSummary,
   LoginRequest,
+  RefreshRequest,
   RegisterRequest,
   TokenPair,
 } from '@famifinances/contracts';
 import { getAccessToken } from '../storage/secure-token-store';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:3000/api/v1';
+export const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:3000/api/v1';
 
 export class ApiError extends Error {
   constructor(
@@ -37,6 +38,10 @@ export function register(input: RegisterRequest): Promise<AccountSummary> {
 
 export function login(input: LoginRequest): Promise<TokenPair> {
   return postJson<LoginRequest, TokenPair>('/auth/login', input);
+}
+
+export function refreshSession(refreshToken: string): Promise<TokenPair> {
+  return postJson<RefreshRequest, TokenPair>('/auth/token/refresh', { refreshToken });
 }
 
 /** Authenticated GET: attaches the stored bearer access token. */

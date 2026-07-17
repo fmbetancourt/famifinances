@@ -76,20 +76,59 @@ export class AuthService {
     }
 
     await this.accounts.clearFailedLogin(account.id);
-    return this.issueSession(account.id);
+    const pair = await this.issueSession(account.id);
+    this.logger.log(`account.signed_in id=${account.id}`);
+    return pair;
   }
 
-  /** Creates a fresh session (new rotation chain) and returns the token pair. */
-  private async issueSession(accountId: string): Promise<TokenPair> {
+  /**
+   * US4 · Rotate the session (FR-007, FR-008, FR-009). A valid refresh token is
+   * superseded and a new one is issued within the same rotation chain. Presenting
+   * an already-rotated (revoked) token is treated as theft: the whole chain is
+   * revoked (reuse detection).
+   */
+  async refresh(refreshToken: string): Promise<TokenPair> {
+    const invalid = new UnauthorizedException('Invalid refresh token.');
+    const tokenHash = this.tokens.hashRefreshToken(refreshToken);
+    const session = await this.sessions.findByTokenHash(tokenHash);
+
+    if (!session) {
+      throw invalid;
+    }
+    if (session.revokedAt) {
+      // Reuse of a rotated/revoked token — revoke the entire chain (theft).
+      await this.sessions.revokeChain(session.rotationChainId);
+      this.logger.warn(`refresh.reuse_detected chain=${session.rotationChainId}`);
+      throw invalid;
+    }
+    if (session.expiresAt.getTime() <= Date.now()) {
+      throw invalid;
+    }
+
+    const accountId = session.accountId.toString();
+    const account = await this.accounts.findById(accountId);
+    if (!account || account.status === 'disabled') {
+      throw invalid;
+    }
+
+    // Supersede the current token and issue a new one in the same chain.
+    await this.sessions.revokeById(session.id);
+    return this.issueSession(accountId, session.rotationChainId);
+  }
+
+  /** Issues an access token + a new rotating refresh token (persisted as a hash). */
+  private async issueSession(
+    accountId: string,
+    rotationChainId: string = randomUUID(),
+  ): Promise<TokenPair> {
     const { token: accessToken, expiresIn } = this.tokens.signAccessToken(accountId);
     const refreshToken = this.tokens.generateRefreshToken();
     await this.sessions.create({
       accountId,
       tokenHash: this.tokens.hashRefreshToken(refreshToken),
-      rotationChainId: randomUUID(),
+      rotationChainId,
       expiresAt: new Date(Date.now() + this.tokens.refreshTtlSeconds() * 1000),
     });
-    this.logger.log(`account.signed_in id=${accountId}`);
     return { accessToken, refreshToken, tokenType: 'Bearer', expiresIn };
   }
 }

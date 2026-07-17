@@ -4,6 +4,7 @@ import type { AccountSummary, TokenPair } from '@famifinances/contracts';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './types/authenticated-user';
@@ -25,6 +26,13 @@ export class AuthController {
   @ApiOkResponse({ description: 'Authenticated; returns an access + refresh token pair.' })
   async login(@Body() dto: LoginDto): Promise<TokenPair> {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  @Post('token/refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Rotated; returns a new access + refresh token pair.' })
+  async refresh(@Body() dto: RefreshDto): Promise<TokenPair> {
+    return this.auth.refresh(dto.refreshToken);
   }
 
   @Get('me')

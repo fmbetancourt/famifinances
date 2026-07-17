@@ -37,6 +37,11 @@ export class RefreshSessionRepository {
     return this.model.findOne({ tokenHash }).exec();
   }
 
+  /** Revokes a single session by id (rotation supersession, logout). */
+  async revokeById(id: string): Promise<void> {
+    await this.model.updateOne({ _id: id }, { $set: { revokedAt: new Date() } }).exec();
+  }
+
   /** Revokes every non-revoked session in a rotation chain (reuse detection). */
   async revokeChain(rotationChainId: string): Promise<void> {
     await this.model

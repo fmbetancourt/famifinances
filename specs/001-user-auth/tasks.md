@@ -152,15 +152,15 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 ### Tests for User Story 4 ⚠️ (write first, must fail)
 
-- [ ] T044 [P] [US4] Contract/e2e test for `POST /auth/token/refresh` (rotation issues new pair) in `apps/api/test/refresh.e2e-spec.ts`
-- [ ] T045 [P] [US4] Integration test for reuse detection revoking the whole chain in `apps/api/test/refresh-reuse.e2e-spec.ts`
+- [X] T044 [P] [US4] Contract/e2e test for `POST /auth/token/refresh` (rotation issues new pair) in `apps/api/test/refresh.e2e-spec.ts`
+- [X] T045 [P] [US4] Integration test for reuse detection revoking the whole chain in `apps/api/test/refresh-reuse.e2e-spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T046 [P] [US4] Create `RefreshDto` in `apps/api/src/auth/dto/refresh.dto.ts`
-- [ ] T047 [US4] Implement `AuthService.refresh` (validate hash, rotate, reuse-detection revoke chain) in `apps/api/src/auth/auth.service.ts`
-- [ ] T048 [US4] Implement `POST /auth/token/refresh` in `apps/api/src/auth/auth.controller.ts`
-- [ ] T049 [P] [US4] Mobile: auto-refresh interceptor on 401 with retry in `apps/mobile/src/features/auth/api/refresh-interceptor.ts`
+- [X] T046 [P] [US4] Create `RefreshDto` in `apps/api/src/auth/dto/refresh.dto.ts`
+- [X] T047 [US4] Implement `AuthService.refresh` (validate hash, rotate, reuse-detection revoke chain) in `apps/api/src/auth/auth.service.ts`
+- [X] T048 [US4] Implement `POST /auth/token/refresh` in `apps/api/src/auth/auth.controller.ts`
+- [X] T049 [P] [US4] Mobile: auto-refresh interceptor on 401 with retry in `apps/mobile/src/features/auth/api/refresh-interceptor.ts`
 
 **Checkpoint**: Sessions survive access-token expiry safely.
 
