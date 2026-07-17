@@ -49,8 +49,8 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiNoContentResponse({ description: 'Session revoked; the refresh token can no longer be used.' })
-  async logout(@Body() dto: RefreshDto): Promise<void> {
-    await this.auth.logout(dto.refreshToken);
+  async logout(@CurrentUser() user: AuthenticatedUser, @Body() dto: RefreshDto): Promise<void> {
+    await this.auth.logout(user.accountId, dto.refreshToken);
   }
 
   @Post('email/verify')

@@ -15,7 +15,9 @@ run/validation guide — implementation belongs in `tasks.md` and the implementa
   `REFRESH_TOKEN_TTL` (e.g. `2592000`), `OTP_TTL` (e.g. `900`), `MAIL_PROVIDER_API_KEY`,
   `MAIL_FROM_ADDRESS`.
 - For pilot email delivery, a configured Resend account and verified sending domain (see research R5).
-  In local/dev, the MailPort uses a console/stub adapter that prints the OTP instead of sending email.
+  In local/dev, the MailPort uses a console stub that logs message metadata only — it does **not** log
+  the OTP itself (FR-027 forbids logging codes). To obtain a code for manual testing, configure a real
+  mail provider; the automated e2e tests read codes via a test-only `MailPort` (see `MailCollector`).
 
 ## Setup
 
@@ -63,10 +65,12 @@ Required passing checks (map to spec):
 
 ## Manual smoke walkthrough (optional)
 
-Using the OpenAPI contract (Swagger UI at `/api/docs` when the API runs), or the mobile app:
+Using the OpenAPI contract (Swagger UI at `/api/docs` when the API runs), or the mobile app.
+Note: obtaining the OTP for steps 5 and 7 requires a configured mail provider — the dev stub does not
+expose the code (FR-027). For a fully self-contained run, use the automated e2e suite instead.
 
-1. `POST /auth/register` with a new email + strong password → `201`; note the OTP printed by the dev
-   mail stub.
+1. `POST /auth/register` with a new email + strong password → `201`. A verification code is emailed
+   (delivered by your configured provider; the dev stub logs metadata only).
 2. `POST /auth/login` → copy `accessToken` + `refreshToken`.
 3. `GET /auth/me` with the bearer token → confirm `emailVerified: false`.
 4. Attempt a family/financial action (once FAM-01 exists) → blocked pending verification.

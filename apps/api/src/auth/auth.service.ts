@@ -238,12 +238,14 @@ export class AuthService {
    * can no longer be used. Idempotent: unknown tokens are silently ignored so
    * logout never reveals whether a session existed.
    */
-  async logout(refreshToken: string): Promise<void> {
+  async logout(accountId: string, refreshToken: string): Promise<void> {
     const tokenHash = this.tokens.hashRefreshToken(refreshToken);
     const session = await this.sessions.findByTokenHash(tokenHash);
-    if (session && !session.revokedAt) {
+    // Only revoke a session that belongs to the authenticated caller — presenting
+    // another account's leaked refresh token must not revoke that account's session.
+    if (session && !session.revokedAt && session.accountId.toString() === accountId) {
       await this.sessions.revokeById(session.id);
-      this.logger.log(`account.signed_out id=${session.accountId.toString()}`);
+      this.logger.log(`account.signed_out id=${accountId}`);
     }
   }
 

@@ -45,4 +45,22 @@ describe('POST /api/v1/auth/logout (US5)', () => {
       .send({ refreshToken });
     expect(afterLogout.status).toBe(401);
   });
+
+  it('does not revoke another account\'s session when given a foreign refresh token', async () => {
+    const attacker = await signIn('logout-attacker@example.com');
+    const victim = await signIn('logout-victim@example.com');
+
+    // Attacker calls logout with their own token but the victim's refresh token.
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/logout')
+      .set('Authorization', `Bearer ${attacker.accessToken}`)
+      .send({ refreshToken: victim.refreshToken });
+    expect(res.status).toBe(204);
+
+    // The victim's session is untouched — their refresh token still rotates.
+    const victimRefresh = await request(app.getHttpServer())
+      .post('/api/v1/auth/token/refresh')
+      .send({ refreshToken: victim.refreshToken });
+    expect(victimRefresh.status).toBe(200);
+  });
 });
