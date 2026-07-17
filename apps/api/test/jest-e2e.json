@@ -2,6 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
+  "maxWorkers": 1,
   "testRegex": ".(e2e|smoke)-spec.ts$",
   "globalSetup": "<rootDir>/global-setup.js",
   "globalTeardown": "<rootDir>/global-teardown.js",

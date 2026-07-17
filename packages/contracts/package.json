@@ -14,6 +14,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "echo \"no tests for contracts\" && exit 0"
   }
 }
