@@ -4,9 +4,7 @@ import { randomInt } from 'node:crypto';
 import * as argon2 from 'argon2';
 import { OneTimeCodeRepository } from './one-time-code.repository';
 import { OneTimeCodeType } from './one-time-code.schema';
-
-export const OTP_LENGTH = 6;
-export const MAX_OTP_ATTEMPTS = 5;
+import { ARGON2_OPTIONS, OTP_POLICY } from '../config/security';
 
 /**
  * Issues and verifies one-time codes (research R3). Codes are 6-digit numeric,
@@ -16,13 +14,6 @@ export const MAX_OTP_ATTEMPTS = 5;
  */
 @Injectable()
 export class OneTimeCodeService {
-  private readonly hashOptions: argon2.Options = {
-    type: argon2.argon2id,
-    memoryCost: 19456,
-    timeCost: 2,
-    parallelism: 1,
-  };
-
   constructor(
     private readonly repo: OneTimeCodeRepository,
     private readonly config: ConfigService,
@@ -31,10 +22,10 @@ export class OneTimeCodeService {
   /** Generates a fresh code, invalidating any previous unused code of this type. */
   async issue(accountId: string, type: OneTimeCodeType): Promise<string> {
     await this.repo.deleteUnconsumed(accountId, type);
-    const code = randomInt(0, 10 ** OTP_LENGTH)
+    const code = randomInt(0, 10 ** OTP_POLICY.length)
       .toString()
-      .padStart(OTP_LENGTH, '0');
-    const codeHash = await argon2.hash(code, this.hashOptions);
+      .padStart(OTP_POLICY.length, '0');
+    const codeHash = await argon2.hash(code, ARGON2_OPTIONS);
     const ttlSeconds = Number(this.config.getOrThrow<string>('OTP_TTL'));
     await this.repo.create({
       accountId,
@@ -48,7 +39,7 @@ export class OneTimeCodeService {
   /** Consumes the active code if `submitted` matches; false otherwise. */
   async verify(accountId: string, type: OneTimeCodeType, submitted: string): Promise<boolean> {
     const doc = await this.repo.findActive(accountId, type);
-    if (!doc || doc.attemptCount >= MAX_OTP_ATTEMPTS) {
+    if (!doc || doc.attemptCount >= OTP_POLICY.maxAttempts) {
       return false;
     }
     await this.repo.incrementAttempt(doc.id);

@@ -80,3 +80,19 @@ Using the OpenAPI contract (Swagger UI at `/api/docs` when the API runs), or the
 All automated suites pass, the OpenAPI contract matches the implemented endpoints, and the privacy and
 authorization gates hold. At that point AUTH-01 satisfies its Success Criteria and is ready to support
 FAM-01 (family creation/join builds on the session identity established here).
+
+## Validation run (recorded)
+
+Executed on 2026-07-16 via `mongodb-memory-server` (no external DB), stub mail adapter:
+
+- **Unit**: 3 suites, 10 tests passing.
+- **E2E**: 17 suites, 31 tests passing (register, login, protected access, refresh + reuse detection,
+  logout, email verification + soft gate, password reset, OpenAPI parity, and no-secrets-in-logs).
+- **Typecheck** (`tsc --noEmit`, strict): PASS. **Build** (`nest build`): PASS.
+- **Latency smoke**: register→signed-in ~245 ms (budget 120 000 ms, SC-001); sign-in ~39 ms
+  (budget 30 000 ms, SC-002).
+- **No-secrets-in-logs (SC-007)**: PASS — no password, token, or OTP appeared in captured stdout/stderr
+  across the full flow.
+
+Mobile screens (`apps/mobile`) are implemented as source aligned with the shared contracts but were
+not built/run here (Expo toolchain not installed in this environment).

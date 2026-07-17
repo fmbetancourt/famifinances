@@ -2,15 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Account, AccountDocument } from './account.schema';
+import { LOGIN_LOCKOUT } from '../config/security';
 
 /** Normalizes an email for storage and comparison (trim + lowercase). */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
-
-/** Lockout policy (FR-013). Tunable in the hardening pass (T075). */
-export const MAX_FAILED_LOGINS = 5;
-export const LOCK_WINDOW_MS = 15 * 60 * 1000;
 
 export interface CreateAccountInput {
   email: string;
@@ -55,8 +52,8 @@ export class AccountRepository {
       return;
     }
     account.failedLoginCount += 1;
-    if (account.failedLoginCount >= MAX_FAILED_LOGINS) {
-      account.lockedUntil = new Date(Date.now() + LOCK_WINDOW_MS);
+    if (account.failedLoginCount >= LOGIN_LOCKOUT.maxFailedAttempts) {
+      account.lockedUntil = new Date(Date.now() + LOGIN_LOCKOUT.lockWindowMs);
       account.failedLoginCount = 0;
     }
     await account.save();

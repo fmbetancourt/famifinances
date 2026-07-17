@@ -246,13 +246,13 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 **Purpose**: Verification, hardening, and documentation across stories
 
-- [ ] T072 [P] No-secrets-in-logs test asserting no password/token/code/monetary value across the full flow (SC-007) in `apps/api/test/log-privacy.e2e-spec.ts`
-- [ ] T073 [P] OpenAPI ↔ implementation parity check (generated spec matches `contracts/auth.openapi.yaml`) in `apps/api/test/openapi-parity.spec.ts`
-- [ ] T074 [P] Verify `packages/contracts` types compile against both apps (no `any`) via a type-check task
-- [ ] T075 Security hardening pass: tune argon2id params and throttler/lockout thresholds in `apps/api/src/config/security.ts`
-- [ ] T076 [P] Document env vars, mail provider setup, and run instructions in `apps/api/README.md`
-- [ ] T077 Execute `specs/001-user-auth/quickstart.md` end-to-end validation and record results
-- [ ] T078 [P] Latency smoke check asserting registration→signed-in and sign-in server flows meet SC-001 (<2 min) / SC-002 (<30 s) budgets in `apps/api/test/auth-latency.smoke-spec.ts`
+- [X] T072 [P] No-secrets-in-logs test asserting no password/token/code/monetary value across the full flow (SC-007) in `apps/api/test/log-privacy.e2e-spec.ts`
+- [X] T073 [P] OpenAPI ↔ implementation parity check (generated spec matches `contracts/auth.openapi.yaml`) in `apps/api/test/openapi-parity.spec.ts`
+- [X] T074 [P] Verify `packages/contracts` types compile against both apps (no `any`) via a type-check task
+- [X] T075 Security hardening pass: tune argon2id params and throttler/lockout thresholds in `apps/api/src/config/security.ts`
+- [X] T076 [P] Document env vars, mail provider setup, and run instructions in `apps/api/README.md`
+- [X] T077 Execute `specs/001-user-auth/quickstart.md` end-to-end validation and record results
+- [X] T078 [P] Latency smoke check asserting registration→signed-in and sign-in server flows meet SC-001 (<2 min) / SC-002 (<30 s) budgets in `apps/api/test/auth-latency.smoke-spec.ts`
 
 ---
 
