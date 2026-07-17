@@ -31,11 +31,17 @@ export default function VerifyEmailScreen() {
 
   async function onResend() {
     setError(null);
+    setInfo(null);
     try {
       await resendVerification();
       setInfo('✓ A new code has been sent.');
-    } catch {
-      setInfo('✓ If your email is pending, a new code has been sent.');
+    } catch (err) {
+      // Only a 2xx means the request was accepted; a failure must not read as success.
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? 'Too many requests. Please wait a moment and try again.'
+          : 'Could not resend the code. Please try again.',
+      );
     }
   }
 

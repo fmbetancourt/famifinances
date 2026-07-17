@@ -31,7 +31,8 @@ export class TokenService {
   }
 
   verifyAccessToken(token: string): AccessTokenPayload {
-    return this.jwt.verify<AccessTokenPayload>(token);
+    // Pin the algorithm (HS256-only) to avoid accepting other alg headers.
+    return this.jwt.verify<AccessTokenPayload>(token, { algorithms: ['HS256'] });
   }
 
   generateRefreshToken(): string {
