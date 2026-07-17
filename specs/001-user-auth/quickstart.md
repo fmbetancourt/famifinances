@@ -36,7 +36,8 @@ Run the backend test suites; these encode the acceptance scenarios and constitut
 ```bash
 pnpm --filter @famifinances/api test        # unit
 pnpm --filter @famifinances/api test:e2e    # integration/e2e (auth.e2e-spec, authorization.e2e-spec)
-pnpm --filter @famifinances/mobile test     # mobile auth screens/hooks
+# Note: the mobile package has no automated tests yet — the auth screens/hooks are
+# source-only in this slice; a mobile test harness is a follow-up.
 ```
 
 Required passing checks (map to spec):

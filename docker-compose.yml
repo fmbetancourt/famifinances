@@ -15,7 +15,8 @@ services:
       - mongo
     environment:
       MONGODB_URI: mongodb://mongo:27017/famifinances
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # Required: no default — fail fast if unset so no known secret can forge tokens.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (e.g. in a local .env, never committed)}
       ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-900}
       REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-2592000}
       OTP_TTL: ${OTP_TTL:-900}

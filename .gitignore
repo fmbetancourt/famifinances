@@ -5,6 +5,11 @@ node_modules/
 dist/
 build/
 
+# Never track compiled artifacts inside package sources
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+
 # Test / coverage
 coverage/
 
