@@ -62,7 +62,7 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 - [ ] T016 [P] Define `MailPort` interface + Resend adapter + dev console stub in `apps/api/src/mail/mail.module.ts`
 - [X] T017 Create `Account` Mongoose schema (normalized unique email, passwordHash, emailVerified, status, lockout fields) and `AccountRepository` in `apps/api/src/accounts/account.schema.ts`
 - [X] T018 [P] Configure Swagger/OpenAPI UI at `/api/docs` sourced from decorators in `apps/api/src/main.ts`
-- [ ] T019 [P] Mobile: implement `expo-secure-store` token store, base typed API client, and `AuthContext`/`useAuth` scaffolding in `apps/mobile/src/features/auth/`
+- [X] T019 [P] Mobile: implement `expo-secure-store` token store, base typed API client, and `AuthContext`/`useAuth` scaffolding in `apps/mobile/src/features/auth/`
 
 **Checkpoint**: DB connects; shared contracts compile; validation, redaction, uniform errors, throttling, hashing, mail port, and the Account entity are all available.
 
@@ -127,16 +127,16 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 ### Tests for User Story 3 ⚠️ (write first, must fail)
 
-- [ ] T037 [P] [US3] Integration test for guard (no token/expired/tampered → 401; valid → 200) in `apps/api/test/protected-access.e2e-spec.ts`
-- [ ] T038 [P] [US3] Authorization test: identity from `sub`, foreign `accountId` in body ignored (FR-011/SC-004) in `apps/api/test/authorization.e2e-spec.ts`
+- [X] T037 [P] [US3] Integration test for guard (no token/expired/tampered → 401; valid → 200) in `apps/api/test/protected-access.e2e-spec.ts`
+- [X] T038 [P] [US3] Authorization test: identity from `sub`, foreign `accountId` in body ignored (FR-011/SC-004) in `apps/api/test/authorization.e2e-spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T039 [P] [US3] Implement `JwtStrategy` (verify access token, load account, reject disabled) in `apps/api/src/auth/strategies/jwt.strategy.ts`
-- [ ] T040 [US3] Implement `JwtAuthGuard` in `apps/api/src/auth/guards/jwt-auth.guard.ts`
-- [ ] T041 [P] [US3] Implement `@CurrentUser` decorator that reads identity only from the validated session in `apps/api/src/auth/decorators/current-user.decorator.ts`
-- [ ] T042 [US3] Implement `GET /auth/me` returning `AccountSummary` in `apps/api/src/auth/auth.controller.ts`
-- [ ] T043 [P] [US3] Mobile: attach bearer token to API client + route guard/redirect for protected screens in `apps/mobile/src/features/auth/api/client.ts`
+- [X] T039 [P] [US3] Implement `JwtStrategy` (verify access token, load account, reject disabled) in `apps/api/src/auth/strategies/jwt.strategy.ts`
+- [X] T040 [US3] Implement `JwtAuthGuard` in `apps/api/src/auth/guards/jwt-auth.guard.ts`
+- [X] T041 [P] [US3] Implement `@CurrentUser` decorator that reads identity only from the validated session in `apps/api/src/auth/decorators/current-user.decorator.ts`
+- [X] T042 [US3] Implement `GET /auth/me` returning `AccountSummary` in `apps/api/src/auth/auth.controller.ts`
+- [X] T043 [P] [US3] Mobile: attach bearer token to API client + route guard/redirect for protected screens in `apps/mobile/src/features/auth/api/client.ts`
 
 **Checkpoint**: P1 slice complete — register + login + protected access (recommended demo MVP).
 
