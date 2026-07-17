@@ -69,7 +69,7 @@ and **document + verify** repeatability.
 - [X] T012 [US2] Make the lint gate cover the whole workspace: set root `lint` in `package.json` to run ESLint across `apps/**` and `packages/**` (add package `lint` scripts or invoke `eslint .` at the root)
 - [X] T013 [US2] Create `.github/workflows/ci.yml` per `specs/002-project-foundation/contracts/ci-pipeline.md`: `pnpm install --frozen-lockfile` → contracts build → `pnpm -r typecheck` → lint → API `test` + `test:e2e` → API build, with pnpm store and `mongodb-memory-server` binary caching
 - [X] T014 [US2] Ensure the CI gates cover BOTH packages by wiring mobile `typecheck` + `lint` into `.github/workflows/ci.yml` (depends on T020/T021 for mobile tooling)
-- [ ] T015 [US2] Configure branch protection on `main` requiring the `quality-gates` status check (and up-to-date branch) via `gh api` — record the command in `specs/002-project-foundation/quickstart.md`
+- [X] T015 [US2] Configure branch protection on `main` requiring the `quality-gates` status check (and up-to-date branch) via `gh api` — record the command in `specs/002-project-foundation/quickstart.md`
 
 **Checkpoint**: A red gate blocks merge; a green gate allows it; both packages are exercised.
 
@@ -93,7 +93,7 @@ and **document + verify** repeatability.
 **Independent Test**: quickstart §3.
 
 - [X] T018 [US4] Contracts consumed by both apps via `@famifinances/contracts`; type-only imports make drift a compile-time failure
-- [ ] T019 [US4] Verify contract-drift detection: a breaking change to `packages/contracts` fails a consumer's `typecheck` (locally and in CI) per `specs/002-project-foundation/quickstart.md` §3
+- [X] T019 [US4] Verify contract-drift detection: a breaking change to `packages/contracts` fails a consumer's `typecheck` (locally and in CI) per `specs/002-project-foundation/quickstart.md` §3
 
 ---
 
