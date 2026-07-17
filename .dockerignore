@@ -1,0 +1,16 @@
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+coverage/
+.git/
+.gitignore
+Dockerfile*
+.dockerignore
+*.log
+.env
+.env.*
+.cache/
+apps/mobile/
+specs/
+.idea/

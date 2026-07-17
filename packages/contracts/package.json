@@ -1,0 +1,12 @@
+{
+  "name": "@famifinances/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "echo \"no tests for contracts\" && exit 0"
+  }
+}

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Test / coverage
+coverage/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Caches
+.cache/
+.turbo/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Expo (mobile)
+apps/mobile/.expo/
