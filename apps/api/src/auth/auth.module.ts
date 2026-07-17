@@ -14,12 +14,13 @@ import { TokenService } from './services/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { EmailVerifiedGuard } from './guards/email-verified.guard';
 
-// The gated-demo route only exists to exercise EmailVerifiedGuard before FAM-01
-// ships real gated routes; never register it in production.
+// The gated-demo route only exists to exercise EmailVerifiedGuard in the e2e
+// tests before FAM-01 ships real gated routes; register it ONLY under test, so it
+// never reaches dev, staging, or production.
 const controllers =
-  process.env.NODE_ENV === 'production'
-    ? [AuthController]
-    : [AuthController, GatedDemoController];
+  process.env.NODE_ENV === 'test'
+    ? [AuthController, GatedDemoController]
+    : [AuthController];
 
 @Module({
   imports: [

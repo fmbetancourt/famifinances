@@ -118,6 +118,9 @@ export class AuthService {
   async requestPasswordReset(email: string): Promise<void> {
     const account = await this.accounts.findByEmail(email);
     if (!account) {
+      // Equalize timing with the registered path (which runs argon2) so response
+      // time cannot reveal whether the email exists (no enumeration, research R6).
+      await this.passwords.verify(await this.passwords.dummyHash(), email);
       return;
     }
     const code = await this.codes.issue(account.id, 'password_reset');

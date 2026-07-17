@@ -2,9 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { MailMessage, MailPort } from '../mail.port';
 
 /**
- * Development adapter: logs the message (subject only, body length) instead of
- * sending, so no secret content is printed. Used when MAIL_PROVIDER_API_KEY is
- * unset. The real Resend adapter (research R5) replaces this in the pilot.
+ * Development mail adapter: logs message metadata only (recipient, subject, body
+ * length) — never the OTP (FR-027) — instead of sending. It is currently wired
+ * unconditionally in MailModule; a production adapter selected by
+ * MAIL_PROVIDER_API_KEY (Resend — research R5) is a pilot-launch task.
  */
 @Injectable()
 export class StubMailAdapter implements MailPort {
