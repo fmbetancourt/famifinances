@@ -5,14 +5,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { createTestApp } from './create-test-app';
 
 /**
- * Polish · OpenAPI ↔ implementation parity for the AUTH-01 surface. The
- * hand-written contract (specs/001-user-auth/contracts/auth.openapi.yaml) and the
- * generated document must expose the same set of `auth/` endpoints. Other modules
- * (e.g. families) own their own contract + parity test, so the comparison is
- * scoped to auth routes here. The test-only gated-demo route is excluded via
- * @ApiExcludeController, so it must not appear.
+ * Polish (T030) · OpenAPI ↔ implementation parity for the FAM-01 surface. The
+ * hand-written contract (specs/003-family-membership/contracts/family.openapi.yaml)
+ * and the generated document must expose the same set of `families/` endpoints.
  */
-describe('OpenAPI parity (Polish)', () => {
+describe('Family OpenAPI parity (Polish)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -23,16 +20,16 @@ describe('OpenAPI parity (Polish)', () => {
     await app?.close();
   });
 
-  /** Normalizes any path to its `auth/...` suffix so prefixes/versions don't matter. */
+  /** Normalizes any path to its `families/...` suffix so prefixes/versions don't matter. */
   function normalize(path: string): string {
-    const idx = path.indexOf('auth/');
+    const idx = path.indexOf('families');
     return idx === -1 ? path : path.slice(idx);
   }
 
   function contractEndpoints(): Set<string> {
     const file = resolve(
       __dirname,
-      '../../../specs/001-user-auth/contracts/auth.openapi.yaml',
+      '../../../specs/003-family-membership/contracts/family.openapi.yaml',
     );
     const lines = readFileSync(file, 'utf8').split('\n');
     const endpoints = new Set<string>();
@@ -57,8 +54,7 @@ describe('OpenAPI parity (Polish)', () => {
     const endpoints = new Set<string>();
     for (const [path, item] of Object.entries(doc.paths)) {
       const normalized = normalize(path);
-      // Scope parity to the auth surface; other modules own their own contract.
-      if (!normalized.startsWith('auth/')) {
+      if (!normalized.startsWith('families')) {
         continue;
       }
       for (const method of Object.keys(item as Record<string, unknown>)) {
@@ -68,18 +64,16 @@ describe('OpenAPI parity (Polish)', () => {
     return endpoints;
   }
 
-  it('exposes exactly the endpoints declared in the contract', () => {
+  it('exposes exactly the family endpoints declared in the contract', () => {
     const contract = contractEndpoints();
     const generated = generatedEndpoints();
 
-    expect(contract.size).toBeGreaterThan(0);
+    expect(contract.size).toBe(6);
 
     const missing = [...contract].filter((e) => !generated.has(e));
     const undocumented = [...generated].filter((e) => !contract.has(e));
 
     expect(missing).toEqual([]);
     expect(undocumented).toEqual([]);
-    // The excluded test-only route must not surface.
-    expect([...generated]).not.toContain('GET auth/gated-demo');
   });
 });

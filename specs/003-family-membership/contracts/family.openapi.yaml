@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Family API (FAM-01)
+  version: 1.0.0
+  description: >
+    Family boundary + membership + secure invite-code join. All routes require a valid access token
+    (AUTH-01). Create/join additionally require a verified email (EmailVerifiedGuard). The acting family
+    is resolved from the caller's membership via the session — never from a caller-supplied identifier
+    (Principle I). Owner-only routes are enforced by role. Invite codes are single-use, time-limited, and
+    hashed at rest.
+servers:
+  - url: /api/v1
+tags:
+  - name: families
+paths:
+  /families:
+    post:
+      tags: [families]
+      summary: Create a family (caller becomes Owner)
+      description: Requires a verified email and that the caller does not already belong to a family.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFamilyRequest' }
+      responses:
+        '201':
+          description: Family created; caller is its Owner.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilySummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate), or the caller already belongs to a family.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '409':
+          description: The caller already belongs to a family (one family per user).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+  /families/me:
+    get:
+      tags: [families]
+      summary: Get the caller's family and its members
+      description: The family is derived from the caller's membership; any member may call it.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The caller's family with its member list.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilyDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The caller does not belong to a family.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+  /families/me/invites:
+    post:
+      tags: [families]
+      summary: Issue a single-use invite code (Owner only)
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: A single-use, time-limited invite code (returned once, in plaintext).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InviteCodeResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The caller is not the family's Owner.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /families/join:
+    post:
+      tags: [families]
+      summary: Join a family by redeeming an invite code
+      description: Requires a verified email and that the caller does not already belong to a family.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JoinFamilyRequest' }
+      responses:
+        '200':
+          description: Joined; caller is now a Member of that family.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilySummary' }
+        '400':
+          description: Invalid, expired, or already-used code; or malformed input.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '409':
+          description: The caller already belongs to a family (one family per user).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /families/me/members/{accountId}:
+    delete:
+      tags: [families]
+      summary: Remove a member (Owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string }
+          description: The member to remove. The family is still taken from the session, not this path.
+      responses:
+        '204': { description: Member removed; they lose access immediately. Family data is unchanged. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The caller is not the Owner, or the target is the Owner (cannot be removed).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404':
+          description: No such member in the caller's family.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+  /families/me/leave:
+    post:
+      tags: [families]
+      summary: Leave the family (Member only)
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: The caller left; they belong to no family and may join another. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The caller is the Owner and cannot leave (no transfer/deletion in this feature).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404':
+          description: The caller does not belong to a family.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: Input failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+    RateLimited:
+      description: Too many requests; throttled per account and/or source.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+
+  schemas:
+    CreateFamilyRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+    JoinFamilyRequest:
+      type: object
+      required: [code]
+      additionalProperties: false
+      properties:
+        code: { type: string, writeOnly: true }
+    InviteCodeResponse:
+      type: object
+      required: [code, expiresIn]
+      properties:
+        code: { type: string, description: The single-use invite code (shown once). }
+        expiresIn: { type: integer, description: Seconds until the code expires. }
+    FamilySummary:
+      type: object
+      required: [familyId, name, role]
+      properties:
+        familyId: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [owner, member] }
+    MemberSummary:
+      type: object
+      required: [accountId, email, role]
+      properties:
+        accountId: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [owner, member] }
+    FamilyDetail:
+      type: object
+      required: [familyId, name, role, members]
+      properties:
+        familyId: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [owner, member] }
+        members:
+          type: array
+          items: { $ref: '#/components/schemas/MemberSummary' }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }

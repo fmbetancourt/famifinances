@@ -72,5 +72,29 @@ pnpm --filter @famifinances/api build        # nest build
 | POST | `/auth/email/verify/resend` | bearer | Re-send the verification code |
 | POST | `/auth/password/reset/request` | — | Request a reset code (uniform response) |
 | POST | `/auth/password/reset/confirm` | — | Set a new password; revokes all sessions |
+| POST | `/families` | bearer + verified | Create a family; caller becomes Owner |
+| GET | `/families/me` | bearer + family | The caller's family and its members |
+| POST | `/families/me/invites` | bearer + owner | Issue a single-use invite code |
+| POST | `/families/join` | bearer + verified | Join a family by redeeming a code |
+| DELETE | `/families/me/members/:accountId` | bearer + owner | Remove a member (Owner cannot be removed) |
+| POST | `/families/me/leave` | bearer + family | Leave the family (Owner cannot leave) |
 
-See `specs/001-user-auth/` for the spec, plan, data model, and the OpenAPI contract.
+See `specs/001-user-auth/` and `specs/003-family-membership/` for the specs, plans, data models, and OpenAPI contracts.
+
+## Family scoping (Principle I enforcement point)
+
+Family-scoped features (ACC-01, TXN-01, BUD-01, …) MUST resolve the acting family
+**from the session, never from client input**. FAM-01 provides the reusable enforcement point:
+
+- **`FamilyScopeGuard`** (`src/families/guards/family-scope.guard.ts`) — resolves the caller's
+  membership from `request.user.accountId` and sets `request.family = { familyId, role }`. It
+  ignores any family id supplied in the body/params/query. Returns `404` when the caller belongs
+  to no family. Use it together with `JwtAuthGuard`.
+- **`@CurrentFamily()`** (`src/families/decorators/current-family.decorator.ts`) — injects that
+  `{ familyId, role }` context into a handler. This is the **only** approved source of the acting
+  family for scoped queries.
+- **`FamilyRoleGuard` + `@Roles('owner')`** (`src/families/guards/family-role.guard.ts`) — owner-only
+  authorization; runs **after** `FamilyScopeGuard` (it reads `request.family.role`).
+
+Downstream feature modules should depend on `@CurrentFamily()`/`FamilyScopeGuard` for their data
+boundary rather than re-deriving the family, so Principle I stays enforced in one place.
