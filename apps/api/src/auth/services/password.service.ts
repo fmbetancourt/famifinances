@@ -8,6 +8,10 @@ import { ARGON2_OPTIONS } from '../../config/security';
  */
 @Injectable()
 export class PasswordService {
+  // Lazily-computed hash used to equalize timing when no account exists, so a
+  // verify is always performed and login cannot be timed to enumerate emails.
+  private dummyHashPromise?: Promise<string>;
+
   async hash(plain: string): Promise<string> {
     return argon2.hash(plain, ARGON2_OPTIONS);
   }
@@ -18,5 +22,13 @@ export class PasswordService {
     } catch {
       return false;
     }
+  }
+
+  /** A stable argon2id hash to verify against on the no-account path (timing safety). */
+  dummyHash(): Promise<string> {
+    if (!this.dummyHashPromise) {
+      this.dummyHashPromise = this.hash('timing-equalizer-not-a-real-password');
+    }
+    return this.dummyHashPromise;
   }
 }

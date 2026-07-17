@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { AccountSummary, TokenPair } from '@famifinances/contracts';
-import { AccountRepository } from '../accounts/account.repository';
+import { AccountRepository, isDuplicateKeyError } from '../accounts/account.repository';
 import { RefreshSessionRepository } from '../sessions/refresh-session.repository';
 import { OneTimeCodeService } from '../one-time-codes/one-time-code.service';
 import { MAIL_PORT, MailPort } from '../mail/mail.port';
@@ -51,13 +51,24 @@ export class AuthService {
       throw new BadRequestException({ message: failures });
     }
 
+    const duplicate = new ConflictException('Registration could not be completed.');
     if (await this.accounts.existsByEmail(email)) {
       // Uniform, non-committal — does not confirm the email exists.
-      throw new ConflictException('Registration could not be completed.');
+      throw duplicate;
     }
 
     const passwordHash = await this.passwords.hash(password);
-    const account = await this.accounts.create({ email, passwordHash });
+    // The unique index is the source of truth: a concurrent insert that slips
+    // past the check above still resolves to the same non-committal 409.
+    let account;
+    try {
+      account = await this.accounts.create({ email, passwordHash });
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        throw duplicate;
+      }
+      throw error;
+    }
     this.logger.log(`account.registered id=${account.id}`);
 
     // Issue and deliver the email-verification code (FR-018).
@@ -143,6 +154,8 @@ export class AuthService {
     const passwordHash = await this.passwords.hash(newPassword);
     await this.accounts.updatePassword(account.id, passwordHash);
     await this.accounts.markEmailVerified(account.id);
+    // Clear any lockout so the user can sign in immediately with the new password.
+    await this.accounts.clearFailedLogin(account.id);
     await this.sessions.revokeAllForAccount(account.id);
     this.logger.log(`account.password_reset id=${account.id}`);
   }
@@ -157,14 +170,17 @@ export class AuthService {
     const invalid = new UnauthorizedException('Invalid email or password.');
     const account = await this.accounts.findByEmail(email);
 
+    // Always run a verify (dummy hash when no account) so response time cannot
+    // distinguish registered from unregistered emails (no enumeration, SC-008).
+    const hash = account?.passwordHash ?? (await this.passwords.dummyHash());
+    const passwordMatches = await this.passwords.verify(hash, password);
+
     if (!account || account.status === 'disabled') {
       throw invalid;
     }
     if (account.lockedUntil && account.lockedUntil.getTime() > Date.now()) {
       throw invalid;
     }
-
-    const passwordMatches = await this.passwords.verify(account.passwordHash, password);
     if (!passwordMatches) {
       await this.accounts.registerFailedLogin(account.id);
       throw invalid;
@@ -206,8 +222,14 @@ export class AuthService {
       throw invalid;
     }
 
-    // Supersede the current token and issue a new one in the same chain.
-    await this.sessions.revokeById(session.id);
+    // Atomically supersede the current token. If another concurrent refresh won
+    // the race, this returns false → treat as reuse and revoke the chain.
+    const superseded = await this.sessions.revokeByIdIfActive(session.id);
+    if (!superseded) {
+      await this.sessions.revokeChain(session.rotationChainId);
+      this.logger.warn(`refresh.reuse_detected chain=${session.rotationChainId}`);
+      throw invalid;
+    }
     return this.issueSession(accountId, session.rotationChainId);
   }
 

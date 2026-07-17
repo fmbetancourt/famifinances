@@ -51,4 +51,37 @@ describe('POST /api/v1/auth/password/reset/confirm (US7)', () => {
       .set('Authorization', `Bearer ${newLogin.body.accessToken}`);
     expect(me.body.emailVerified).toBe(true);
   });
+
+  it('clears an existing lockout so the user can sign in right after a reset', async () => {
+    const lockedEmail = 'reset-locked@example.com';
+    await request(server())
+      .post('/api/v1/auth/register')
+      .send({ email: lockedEmail, password: oldPassword });
+
+    // Lock the account with repeated failed sign-ins.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(server())
+        .post('/api/v1/auth/login')
+        .send({ email: lockedEmail, password: 'wrongpassword9' });
+    }
+    // Sanity: the account is locked (correct password rejected).
+    expect(
+      (await request(server()).post('/api/v1/auth/login').send({ email: lockedEmail, password: oldPassword }))
+        .status,
+    ).toBe(401);
+
+    // Reset the password.
+    await request(server()).post('/api/v1/auth/password/reset/request').send({ email: lockedEmail });
+    const code = mail.lastCodeFor(lockedEmail) as string;
+    const confirm = await request(server())
+      .post('/api/v1/auth/password/reset/confirm')
+      .send({ email: lockedEmail, code, newPassword });
+    expect(confirm.status).toBe(204);
+
+    // The lockout is cleared: the new password works immediately.
+    expect(
+      (await request(server()).post('/api/v1/auth/login').send({ email: lockedEmail, password: newPassword }))
+        .status,
+    ).toBe(200);
+  });
 });

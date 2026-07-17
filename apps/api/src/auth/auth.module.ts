@@ -14,6 +14,13 @@ import { TokenService } from './services/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { EmailVerifiedGuard } from './guards/email-verified.guard';
 
+// The gated-demo route only exists to exercise EmailVerifiedGuard before FAM-01
+// ships real gated routes; never register it in production.
+const controllers =
+  process.env.NODE_ENV === 'production'
+    ? [AuthController]
+    : [AuthController, GatedDemoController];
+
 @Module({
   imports: [
     AccountsModule,
@@ -30,7 +37,7 @@ import { EmailVerifiedGuard } from './guards/email-verified.guard';
       }),
     }),
   ],
-  controllers: [AuthController, GatedDemoController],
+  controllers,
   providers: [AuthService, PasswordService, TokenService, JwtStrategy, EmailVerifiedGuard],
   exports: [AuthService, TokenService],
 })

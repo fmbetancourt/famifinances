@@ -9,6 +9,15 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** True when an error is a MongoDB duplicate-key violation (E11000). */
+export function isDuplicateKeyError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: number }).code === 11000
+  );
+}
+
 export interface CreateAccountInput {
   email: string;
   passwordHash: string;

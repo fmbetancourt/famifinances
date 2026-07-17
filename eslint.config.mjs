@@ -19,4 +19,11 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Expo Router route files MUST be default exports — the framework requires it.
+    files: ['apps/mobile/app/**/*.tsx', 'apps/mobile/app/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
 );
