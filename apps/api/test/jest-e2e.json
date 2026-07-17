@@ -1,0 +1,14 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".(e2e|smoke)-spec.ts$",
+  "globalSetup": "<rootDir>/global-setup.js",
+  "globalTeardown": "<rootDir>/global-teardown.js",
+  "transform": {
+    "^.+\\.ts$": ["ts-jest", { "tsconfig": "<rootDir>/../tsconfig.json" }]
+  },
+  "moduleNameMapper": {
+    "^@famifinances/contracts$": "<rootDir>/../../../packages/contracts/src/index.ts"
+  }
+}

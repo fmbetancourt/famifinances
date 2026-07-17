@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Never track compiled artifacts inside package sources
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+
+# Test / coverage
+coverage/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Caches
+.cache/
+.turbo/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Expo (mobile)
+apps/mobile/.expo/

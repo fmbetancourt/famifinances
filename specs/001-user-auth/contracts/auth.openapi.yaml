@@ -1,0 +1,302 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Auth API (AUTH-01)
+  version: 1.0.0
+  description: >
+    Identity and access endpoints: registration, sign-in, session refresh, logout,
+    email verification (soft gate), and password reset (revokes all sessions).
+    Failure responses for sign-in and reset requests are intentionally uniform to
+    prevent account enumeration. Identity is always derived from the access token.
+servers:
+  - url: /api/v1
+tags:
+  - name: auth
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register a new account (email starts unverified)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Account created (email unverified). A verification code is emailed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409':
+          description: >
+            Registration could not be completed. Response is non-committal and does
+            not confirm whether the email already exists (FR-004).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Sign in and obtain a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authenticated. Returns access + refresh tokens.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401':
+          description: >
+            Generic authentication failure. Identical for unknown email and wrong
+            password (FR-014, SC-008).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/token/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate the refresh token and get a new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: New token pair issued; previous refresh token invalidated (rotation).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401':
+          description: Expired, revoked, or reused refresh token. Reuse revokes the chain.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the current session
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '204': { description: Session revoked; refresh token can no longer be used. }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Current authenticated identity (derived from the access token)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Identity of the token bearer. Never derived from client input.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/email/verify:
+    post:
+      tags: [auth]
+      summary: Verify email with a one-time code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CodeRequest' }
+      responses:
+        '200':
+          description: Email verified; family/financial actions unlocked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '400':
+          description: >
+            Invalid, expired, or already-used code (GenericError), or a malformed
+            code that fails DTO validation (ValidationErrorBody) (FR-020).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/email/verify/resend:
+    post:
+      tags: [auth]
+      summary: Re-send the email verification code (invalidates the previous unused code)
+      security:
+        - bearerAuth: []
+      responses:
+        '202': { description: If applicable, a new code has been sent. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/password/reset/request:
+    post:
+      tags: [auth]
+      summary: Request a password-reset code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202':
+          description: >
+            Uniform response whether or not the email is registered (FR-022, SC-011).
+            A code is sent only if the account exists.
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/password/reset/confirm:
+    post:
+      tags: [auth]
+      summary: Confirm a password reset (revokes all sessions, marks email verified)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetConfirmRequest' }
+      responses:
+        '204':
+          description: >
+            Password updated. All existing sessions revoked (FR-024) and email marked
+            verified (FR-025). Client must sign in again.
+        '400':
+          description: >
+            Invalid/expired/used code (GenericError) or failed input/password-policy
+            validation (ValidationErrorBody).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: Input failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+    RateLimited:
+      description: Too many requests; throttled per account and/or source.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128, writeOnly: true }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, writeOnly: true }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      additionalProperties: false
+      properties:
+        refreshToken: { type: string, writeOnly: true }
+    EmailRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+    CodeRequest:
+      type: object
+      required: [code]
+      additionalProperties: false
+      properties:
+        code: { type: string, pattern: '^[0-9]{6}$', writeOnly: true }
+    ResetConfirmRequest:
+      type: object
+      required: [email, code, newPassword]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        code: { type: string, pattern: '^[0-9]{6}$', writeOnly: true }
+        newPassword: { type: string, minLength: 12, maxLength: 128, writeOnly: true }
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, enum: [Bearer] }
+        expiresIn: { type: integer, description: Access token lifetime in seconds. }
+    AccountSummary:
+      type: object
+      required: [accountId, email, emailVerified]
+      properties:
+        accountId: { type: string }
+        email: { type: string, format: email }
+        emailVerified: { type: boolean }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, description: Non-committal, uniform message. }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }

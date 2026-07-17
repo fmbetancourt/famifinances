@@ -1,0 +1,29 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      - mongo
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/famifinances
+      # Required: no default — fail fast if unset so no known secret can forge tokens.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (e.g. in a local .env, never committed)}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-900}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-2592000}
+      OTP_TTL: ${OTP_TTL:-900}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@famifinances.local}
+      MAIL_PROVIDER_API_KEY: ${MAIL_PROVIDER_API_KEY:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  mongo-data:
