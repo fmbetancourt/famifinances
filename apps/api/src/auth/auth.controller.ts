@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { CodeDto } from './dto/code.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './types/authenticated-user';
@@ -48,6 +49,26 @@ export class AuthController {
   @ApiNoContentResponse({ description: 'Session revoked; the refresh token can no longer be used.' })
   async logout(@Body() dto: RefreshDto): Promise<void> {
     await this.auth.logout(dto.refreshToken);
+  }
+
+  @Post('email/verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Email verified; family/financial actions unlocked.' })
+  async verifyEmail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CodeDto,
+  ): Promise<AccountSummary> {
+    return this.auth.verifyEmail(user.accountId, dto.code);
+  }
+
+  @Post('email/verify/resend')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiBearerAuth()
+  async resendVerification(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.auth.resendVerification(user.accountId);
   }
 
   @Get('me')

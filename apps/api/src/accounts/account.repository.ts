@@ -67,4 +67,8 @@ export class AccountRepository {
       .updateOne({ _id: id }, { $set: { failedLoginCount: 0, lockedUntil: null } })
       .exec();
   }
+
+  async markEmailVerified(id: string): Promise<void> {
+    await this.model.updateOne({ _id: id }, { $set: { emailVerified: true } }).exec();
+  }
 }

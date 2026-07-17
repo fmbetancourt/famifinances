@@ -198,19 +198,19 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 ### Tests for User Story 6 ⚠️ (write first, must fail)
 
-- [ ] T054 [P] [US6] Contract/e2e test for `POST /auth/email/verify` (200 verified; invalid/expired/used 400) in `apps/api/test/verify-email.e2e-spec.ts`
-- [ ] T055 [P] [US6] Integration test for soft gate (unverified account blocked, verified account allowed) exercising the test-only guarded route from T062 in `apps/api/test/verified-gate.e2e-spec.ts`
-- [ ] T056 [P] [US6] Integration test for resend invalidating the previous unused code in `apps/api/test/verify-resend.e2e-spec.ts`
+- [X] T054 [P] [US6] Contract/e2e test for `POST /auth/email/verify` (200 verified; invalid/expired/used 400) in `apps/api/test/verify-email.e2e-spec.ts`
+- [X] T055 [P] [US6] Integration test for soft gate (unverified account blocked, verified account allowed) exercising the test-only guarded route from T062 in `apps/api/test/verified-gate.e2e-spec.ts`
+- [X] T056 [P] [US6] Integration test for resend invalidating the previous unused code in `apps/api/test/verify-resend.e2e-spec.ts`
 
 ### Implementation for User Story 6
 
-- [ ] T057 [P] [US6] Create `OneTimeCode` schema + repository (type, codeHash, expiresAt TTL, attemptCount, consumedAt) in `apps/api/src/one-time-codes/one-time-code.schema.ts`
-- [ ] T058 [US6] Implement `OneTimeCodeService` (CSPRNG 6-digit, argon2 hash, expiry, attempts, single-use, invalidate prior) in `apps/api/src/one-time-codes/one-time-code.service.ts`
-- [ ] T059 [US6] Wire verification-code issuance into `AuthService.register` and send via `MailPort` (FR-018) in `apps/api/src/auth/auth.service.ts`
-- [ ] T060 [P] [US6] Create `CodeDto` in `apps/api/src/auth/dto/code.dto.ts`
-- [ ] T061 [US6] Implement `POST /auth/email/verify` and `POST /auth/email/verify/resend` in `apps/api/src/auth/auth.controller.ts`
-- [ ] T062 [US6] Implement `EmailVerifiedGuard` / soft-gate decorator that reads the authoritative `emailVerified` flag from the account (not a token claim), for family/financial actions (consumed by FAM-01), plus a temporary test-only guarded route to exercise it within AUTH-01, in `apps/api/src/auth/guards/email-verified.guard.ts`
-- [ ] T063 [P] [US6] Mobile verify-email screen (OTP entry + resend) in `apps/mobile/app/(auth)/verify-email.tsx`
+- [X] T057 [P] [US6] Create `OneTimeCode` schema + repository (type, codeHash, expiresAt TTL, attemptCount, consumedAt) in `apps/api/src/one-time-codes/one-time-code.schema.ts`
+- [X] T058 [US6] Implement `OneTimeCodeService` (CSPRNG 6-digit, argon2 hash, expiry, attempts, single-use, invalidate prior) in `apps/api/src/one-time-codes/one-time-code.service.ts`
+- [X] T059 [US6] Wire verification-code issuance into `AuthService.register` and send via `MailPort` (FR-018) in `apps/api/src/auth/auth.service.ts`
+- [X] T060 [P] [US6] Create `CodeDto` in `apps/api/src/auth/dto/code.dto.ts`
+- [X] T061 [US6] Implement `POST /auth/email/verify` and `POST /auth/email/verify/resend` in `apps/api/src/auth/auth.controller.ts`
+- [X] T062 [US6] Implement `EmailVerifiedGuard` / soft-gate decorator that reads the authoritative `emailVerified` flag from the account (not a token claim), for family/financial actions (consumed by FAM-01), plus a temporary test-only guarded route to exercise it within AUTH-01, in `apps/api/src/auth/guards/email-verified.guard.ts`
+- [X] T063 [P] [US6] Mobile verify-email screen (OTP entry + resend) in `apps/mobile/app/(auth)/verify-email.tsx`
 
 **Checkpoint**: Email verification and the soft gate are in place.
 

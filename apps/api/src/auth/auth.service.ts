@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -9,6 +10,8 @@ import { randomUUID } from 'node:crypto';
 import type { AccountSummary, TokenPair } from '@famifinances/contracts';
 import { AccountRepository } from '../accounts/account.repository';
 import { RefreshSessionRepository } from '../sessions/refresh-session.repository';
+import { OneTimeCodeService } from '../one-time-codes/one-time-code.service';
+import { MAIL_PORT, MailPort } from '../mail/mail.port';
 import { PasswordService } from './services/password.service';
 import { TokenService } from './services/token.service';
 import { evaluatePasswordPolicy } from './services/password-policy';
@@ -22,7 +25,19 @@ export class AuthService {
     private readonly sessions: RefreshSessionRepository,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
+    private readonly codes: OneTimeCodeService,
+    @Inject(MAIL_PORT) private readonly mail: MailPort,
   ) {}
+
+  /** Issues an email-verification code and delivers it (FR-018/FR-021). */
+  private async sendVerificationCode(accountId: string, email: string): Promise<void> {
+    const code = await this.codes.issue(accountId, 'email_verification');
+    await this.mail.send({
+      to: email,
+      subject: 'Verify your FamiFinances email',
+      body: `Your FamiFinances verification code is ${code}. It expires shortly.`,
+    });
+  }
 
   /**
    * US1 · Register a new account (FR-001..FR-005). Email is normalized in the
@@ -45,11 +60,43 @@ export class AuthService {
     const account = await this.accounts.create({ email, passwordHash });
     this.logger.log(`account.registered id=${account.id}`);
 
+    // Issue and deliver the email-verification code (FR-018).
+    await this.sendVerificationCode(account.id, account.email);
+
     return {
       accountId: account.id,
       email: account.email,
       emailVerified: account.emailVerified,
     };
+  }
+
+  /**
+   * US6 · Verify email with a one-time code (FR-020). On success the email is
+   * marked verified, immediately unlocking family/financial actions.
+   */
+  async verifyEmail(accountId: string, code: string): Promise<AccountSummary> {
+    const verified = await this.codes.verify(accountId, 'email_verification', code);
+    if (!verified) {
+      throw new BadRequestException('Invalid or expired code.');
+    }
+    await this.accounts.markEmailVerified(accountId);
+    const account = await this.accounts.findById(accountId);
+    if (!account) {
+      throw new UnauthorizedException();
+    }
+    return {
+      accountId: account.id,
+      email: account.email,
+      emailVerified: account.emailVerified,
+    };
+  }
+
+  /** US6 · Re-send a verification code, invalidating the previous one (FR-021). */
+  async resendVerification(accountId: string): Promise<void> {
+    const account = await this.accounts.findById(accountId);
+    if (account && !account.emailVerified) {
+      await this.sendVerificationCode(account.id, account.email);
+    }
   }
 
   /**
