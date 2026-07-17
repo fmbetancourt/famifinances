@@ -7,6 +7,7 @@ import { THROTTLE } from './config/security';
 import { DatabaseModule } from './database/database.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { AuthModule } from './auth/auth.module';
+import { FamiliesModule } from './families/families.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { MailModule } from './mail/mail.module';
     AccountsModule,
     MailModule,
     AuthModule,
+    FamiliesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

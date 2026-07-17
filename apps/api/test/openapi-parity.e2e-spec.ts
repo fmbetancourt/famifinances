@@ -5,10 +5,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { createTestApp } from './create-test-app';
 
 /**
- * Polish · OpenAPI ↔ implementation parity. The hand-written contract
- * (specs/.../contracts/auth.openapi.yaml) and the generated document must expose
- * the same set of public endpoints. The test-only gated-demo route is excluded
- * via @ApiExcludeController, so it must not appear.
+ * Polish · OpenAPI ↔ implementation parity for the AUTH-01 surface. The
+ * hand-written contract (specs/001-user-auth/contracts/auth.openapi.yaml) and the
+ * generated document must expose the same set of `auth/` endpoints. Other modules
+ * (e.g. families) own their own contract + parity test, so the comparison is
+ * scoped to auth routes here. The test-only gated-demo route is excluded via
+ * @ApiExcludeController, so it must not appear.
  */
 describe('OpenAPI parity (Polish)', () => {
   let app: INestApplication;
@@ -54,8 +56,13 @@ describe('OpenAPI parity (Polish)', () => {
     const doc = SwaggerModule.createDocument(app, config);
     const endpoints = new Set<string>();
     for (const [path, item] of Object.entries(doc.paths)) {
+      const normalized = normalize(path);
+      // Scope parity to the auth surface; other modules own their own contract.
+      if (!normalized.startsWith('auth/')) {
+        continue;
+      }
       for (const method of Object.keys(item as Record<string, unknown>)) {
-        endpoints.add(`${method.toUpperCase()} ${normalize(path)}`);
+        endpoints.add(`${method.toUpperCase()} ${normalized}`);
       }
     }
     return endpoints;
