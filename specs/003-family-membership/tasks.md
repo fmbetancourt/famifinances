@@ -211,3 +211,15 @@ Test tasks are written FIRST and must FAIL before implementation.
   reuse/expiry (T012/T013), membership audit trail (T034), no-secrets-in-logs (T029), OpenAPI contract
   (T030), shared typed contracts (T033).
 - Verify each test fails before implementing; commit after each task or logical group (conventional commits).
+
+---
+
+## Phase 9: Convergence
+
+> Appended by `/speckit-converge`. The API implementation fully satisfies the spec and tasks
+> (14 FR + 7 SC, verified by 25 e2e suites / 55 tests). These items only realign the lagging
+> `plan.md` with the invite-code decision that was already reconciled in `research.md`,
+> `data-model.md`, and this file. The deferred mobile screens remain tracked as T011/T019/T022/T025/T028.
+
+- [X] T035 Reconcile `plan.md` (Summary, Technical Context, Constitution Check II, Project Structure) with the shipped invite-code design — high-entropy CSPRNG + **SHA-256** hash, single-use, no per-code attempt cap — and the membership lifecycle (leaving **deletes** the row; there is no soft `status` field, and `Invitation` has no `attempts`), per research R3/R5 and data-model.md (contradicts)
+- [X] T036 Reconcile `plan.md` Project Structure paths for `FamilyScopeGuard`, `FamilyRoleGuard`, and `@CurrentFamily` from `apps/api/src/auth/…` to their shipped location under `apps/api/src/families/guards` and `apps/api/src/families/decorators` (matching tasks T005/T006) (contradicts)

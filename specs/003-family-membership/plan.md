@@ -10,8 +10,9 @@ FAM-01 establishes the family as the privacy boundary and owner of all financial
 AUTH-01 session identity. It adds three entities to the NestJS modular monolith — Family, Membership,
 Invitation — and the **family-scope enforcement point** (Principle I): the acting family is resolved
 from the caller's membership via the authenticated session, never from client input. Owners create a
-family and issue **single-use, time-limited invite codes** (reusing the AUTH-01 OTP security pattern —
-CSPRNG + argon2 hash + expiry + single-use + attempt cap); invitees redeem a code in the app to become
+family and issue **single-use, time-limited invite codes** (reusing the AUTH-01 hashed-secret pattern —
+high-entropy CSPRNG code + SHA-256 hash + expiry + single-use; the code's entropy replaces a per-code
+attempt cap, mirroring the refresh-token variant); invitees redeem a code in the app to become
 Members. A hard **one-family-per-user** rule is enforced by a unique membership index. Creating/joining
 requires a verified email (the AUTH-01 `EmailVerifiedGuard`). Owners manage members; the reusable
 `FamilyScopeGuard`/`@CurrentFamily` this feature introduces is what ACC-01, TXN-01, BUD-01 will build on.
@@ -21,9 +22,9 @@ requires a verified email (the AUTH-01 `EmailVerifiedGuard`). Owners manage memb
 **Language/Version**: TypeScript 5.x (strict, no `any`); Node.js 20 LTS; NestJS; Expo/React Native mobile.
 
 **Primary Dependencies**: existing stack — NestJS, Mongoose (MongoDB), `@nestjs/jwt` + Passport (from
-AUTH-01), argon2 (hash invite codes), `class-validator`, `@nestjs/throttler`, `@nestjs/swagger`. Reuses
-AUTH-01 building blocks: `JwtAuthGuard`, `@CurrentUser`, `EmailVerifiedGuard`, and the OTP security
-pattern (`OneTimeCodeService` approach) for invite codes.
+AUTH-01), Node `crypto` (`randomBytes` + SHA-256 to hash invite codes), `class-validator`,
+`@nestjs/throttler`, `@nestjs/swagger`. Reuses AUTH-01 building blocks: `JwtAuthGuard`, `@CurrentUser`,
+`EmailVerifiedGuard`, and the hashed-secret pattern (the refresh-token variant) for invite codes.
 
 **Storage**: MongoDB via Mongoose. New collections: `families`, `memberships`, `invitations`.
 
@@ -51,10 +52,10 @@ membership per user (unique index); email verification required for create/join;
 | # | Principle | Assessment | Status |
 |---|-----------|------------|--------|
 | I | Family Data Isolation (NON-NEGOTIABLE) | FAM-01 **is** this principle's implementation: a `FamilyScopeGuard` + `@CurrentFamily` resolves the family from the caller's membership (session `sub`), rejecting any caller-supplied family id; cross-family authorization e2e tests are mandatory. | PASS (central) |
-| II | Financial Privacy by Design | Invite codes are CSPRNG, argon2-hashed at rest, single-use, expiry + attempt-capped, rate-limited; no codes/secrets in logs. | PASS |
+| II | Financial Privacy by Design | Invite codes are high-entropy CSPRNG, SHA-256-hashed at rest, single-use, expiry-bounded, rate-limited (their entropy replaces a per-code attempt cap); no codes/secrets in logs. | PASS |
 | III | Derived Balance Integrity | No balances/movements in this feature (ACC-01/TXN-01). | N/A |
 | IV | Test-First & Definition of Done | TDD; isolation + one-family-per-user + invite-reuse tests authored with implementation; OpenAPI documented. | PASS |
-| V | Modular Monolith Simplicity | Three cohesive modules (families, memberships, invitations) in the monolith; reuse OTP pattern; no new infrastructure. | PASS |
+| V | Modular Monolith Simplicity | Three cohesive modules (families, memberships, invitations) in the monolith; reuse the AUTH-01 hashed-secret pattern; no new infrastructure. | PASS |
 | VI | Shared, Documented Contracts | OpenAPI + `packages/contracts` DTO types; TS strict, no `any`; hexagonal repositories. | PASS |
 | VII | Fast & Accessible Capture UX | Minimal mobile screens (create family, enter invite code, manage members) with one primary action; status via text+icon, not color alone. | PASS |
 
@@ -89,31 +90,33 @@ apps/api/src/
 │   ├── family.schema.ts              # Family (name, ownerId, timestamps)
 │   ├── family.repository.ts
 │   ├── families.module.ts
-│   ├── families.controller.ts        # create, get-my-family, remove-member, leave
-│   └── families.service.ts           # orchestration (create/join/leave/remove)
+│   ├── families.controller.ts        # create, get-my-family, issue-invite, join, remove-member, leave
+│   ├── families.service.ts           # orchestration (create/join/leave/remove)
+│   ├── guards/family-scope.guard.ts   # NEW: resolves family from membership; rejects foreign family id
+│   ├── guards/family-role.guard.ts    # NEW: @Roles('owner') enforcement
+│   └── decorators/current-family.decorator.ts  # NEW: @CurrentFamily (from session membership)
 ├── memberships/
-│   ├── membership.schema.ts          # accountId (UNIQUE → one family/user), familyId, role, status
+│   ├── membership.schema.ts          # accountId (UNIQUE → one family/user), familyId, role
 │   ├── membership.repository.ts
 │   ├── membership-event.schema.ts    # append-only audit (create/join/remove/left, actor, timestamp)
+│   ├── membership-event.repository.ts
 │   └── memberships.module.ts
 ├── invitations/
-│   ├── invitation.schema.ts          # familyId, issuedBy, codeHash, expiresAt(TTL), consumedAt, attempts
-│   ├── invitation.repository.ts
-│   ├── invitation.service.ts         # issue/redeem (CSPRNG + argon2 + single-use, reuses OTP pattern)
+│   ├── invitation.schema.ts          # familyId, issuedBy, codeHash(indexed), expiresAt(TTL), consumedAt
+│   ├── invitation.service.ts         # issue/redeem (CSPRNG + SHA-256 + atomic single-use)
 │   └── invitations.module.ts
-└── auth/                             # EXTEND (reuse)
-    ├── guards/family-scope.guard.ts   # NEW: resolves family from membership; rejects foreign family id
-    ├── guards/family-role.guard.ts    # NEW: @Roles('owner') enforcement
-    └── decorators/current-family.decorator.ts  # NEW: @CurrentFamily (from session membership)
+└── auth/                             # REUSED (unchanged): JwtAuthGuard, @CurrentUser, EmailVerifiedGuard
 
 packages/contracts/src/family/         # shared DTO types (FamilySummary, MemberSummary, invite/join)
 apps/mobile/app/(family)/              # create-family, join-family (enter code), members screens
 ```
 
-**Structure Decision**: Keep the AUTH-01 monorepo layout. FAM-01 adds three domain modules and extends
-the existing `auth` guard layer with the **family-scope** enforcement (the reusable Principle I gate).
-Invite codes reuse the OTP security pattern rather than a new mechanism (Principle V). The
-`@CurrentFamily`/`FamilyScopeGuard` are the contract future financial features depend on.
+**Structure Decision**: Keep the AUTH-01 monorepo layout. FAM-01 adds three domain modules; the
+**family-scope** enforcement (the reusable Principle I gate) lives in the `families` module
+(`families/guards`, `families/decorators`) and reuses AUTH-01's `JwtAuthGuard`/`EmailVerifiedGuard`
+unchanged. Invite codes reuse the AUTH-01 hashed-secret pattern (the refresh-token variant) rather than a
+new mechanism (Principle V). The `@CurrentFamily`/`FamilyScopeGuard` are the contract future financial
+features depend on.
 
 ## Complexity Tracking
 
