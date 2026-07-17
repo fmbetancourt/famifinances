@@ -20,6 +20,9 @@ export class MembershipEvent {
 
   @Prop({ required: true, enum: ['created', 'joined', 'removed', 'left'] })
   type!: MembershipEventType;
+
+  // Populated by Mongoose `timestamps` (createdAt only); declared for typing.
+  createdAt!: Date;
 }
 
 export type MembershipEventDocument = HydratedDocument<MembershipEvent>;

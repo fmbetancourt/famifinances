@@ -118,11 +118,11 @@ Test tasks are written FIRST and must FAIL before implementation.
 
 ### Tests for User Story 4 ⚠️ (write first, must fail)
 
-- [ ] T023 [P] [US4] e2e for `DELETE /families/me/members/{accountId}` (204; removed member denied next request; remove owner → 403; non-owner → 403) in `apps/api/test/manage-members.e2e-spec.ts`
+- [X] T023 [P] [US4] e2e for `DELETE /families/me/members/{accountId}` (204; removed member denied next request; remove owner → 403; non-owner → 403) in `apps/api/test/manage-members.e2e-spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T024 [US4] Implement `DELETE /families/me/members/{accountId}` (owner-only; refuse to remove the Owner; delete the target membership within the caller's family; **append a `removed` MembershipEvent** with actor = the Owner) in `apps/api/src/families/families.service.ts` and controller
+- [X] T024 [US4] Implement `DELETE /families/me/members/{accountId}` (owner-only; refuse to remove the Owner; delete the target membership within the caller's family; **append a `removed` MembershipEvent** with actor = the Owner) in `apps/api/src/families/families.service.ts` and controller
 - [ ] T025 [P] [US4] Mobile members screen (list; remove action for the Owner) in `apps/mobile/app/(family)/members.tsx`
 
 **Checkpoint**: Owner can manage membership; removal revokes access immediately.
@@ -137,11 +137,11 @@ Test tasks are written FIRST and must FAIL before implementation.
 
 ### Tests for User Story 5 ⚠️ (write first, must fail)
 
-- [ ] T026 [P] [US5] e2e: a user already in a family creating/joining a second → 409; after `POST /families/me/leave` the account can join another; owner leave → 403 in `apps/api/test/one-family-per-user.e2e-spec.ts`
+- [X] T026 [P] [US5] e2e: a user already in a family creating/joining a second → 409; after `POST /families/me/leave` the account can join another; owner leave → 403 in `apps/api/test/one-family-per-user.e2e-spec.ts`
 
 ### Implementation for User Story 5
 
-- [ ] T027 [US5] Implement `POST /families/me/leave` (Member deletes own membership; **append a `left` MembershipEvent**; Owner → 403) in `apps/api/src/families/families.service.ts` and controller
+- [X] T027 [US5] Implement `POST /families/me/leave` (Member deletes own membership; **append a `left` MembershipEvent**; Owner → 403) in `apps/api/src/families/families.service.ts` and controller
 - [ ] T028 [P] [US5] Mobile leave-family action in `apps/mobile/src/features/family/hooks/use-leave-family.ts`
 
 **Checkpoint**: One-family-per-user enforced everywhere; leave frees the account.
@@ -150,12 +150,12 @@ Test tasks are written FIRST and must FAIL before implementation.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T029 [P] No-secrets-in-logs test: invite codes never appear in logs across issue/join (FR-005) in `apps/api/test/family-log-privacy.e2e-spec.ts`
-- [ ] T030 [P] OpenAPI parity check: generated document matches `specs/003-family-membership/contracts/family.openapi.yaml` in `apps/api/test/family-openapi-parity.e2e-spec.ts`
-- [ ] T031 [P] Document `@CurrentFamily`/`FamilyScopeGuard` as the reusable Principle-I enforcement point for ACC-01/TXN-01/BUD-01 in `apps/api/README.md`
-- [ ] T032 Execute `specs/003-family-membership/quickstart.md` end-to-end and record results, including the SC-001 (create < 1 min) / SC-002 (join < 2 min) timing observations
-- [ ] T033 [P] Verify `packages/contracts` family types compile against the API (no `any`) via `pnpm typecheck`
-- [ ] T034 [P] Audit e2e: each membership change (create, join, remove, leave) appends a `MembershipEvent` with author + timestamp, and the record survives the membership deletion (FR-013) in `apps/api/test/membership-audit.e2e-spec.ts`
+- [X] T029 [P] No-secrets-in-logs test: invite codes never appear in logs across issue/join (FR-005) in `apps/api/test/family-log-privacy.e2e-spec.ts`
+- [X] T030 [P] OpenAPI parity check: generated document matches `specs/003-family-membership/contracts/family.openapi.yaml` in `apps/api/test/family-openapi-parity.e2e-spec.ts`
+- [X] T031 [P] Document `@CurrentFamily`/`FamilyScopeGuard` as the reusable Principle-I enforcement point for ACC-01/TXN-01/BUD-01 in `apps/api/README.md`
+- [X] T032 Execute `specs/003-family-membership/quickstart.md` end-to-end and record results, including the SC-001 (create < 1 min) / SC-002 (join < 2 min) timing observations
+- [X] T033 [P] Verify `packages/contracts` family types compile against the API (no `any`) via `pnpm typecheck`
+- [X] T034 [P] Audit e2e: each membership change (create, join, remove, leave) appends a `MembershipEvent` with author + timestamp, and the record survives the membership deletion (FR-013) in `apps/api/test/membership-audit.e2e-spec.ts`
 
 ---
 

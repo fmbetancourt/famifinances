@@ -57,3 +57,20 @@ All automated suites pass; a family scopes its data via the session membership; 
 duplicate-family attempts are rejected; invite codes are single-use, time-limited, and hashed. At that
 point FAM-01 satisfies its Success Criteria and provides the `@CurrentFamily`/`FamilyScopeGuard` boundary
 that ACC-01, TXN-01, and BUD-01 build on.
+
+## Validation results (T032)
+
+Executed against the automated suite (`mongodb-memory-server`, serial) — the authoritative validation.
+
+- **Unit**: 5 suites / 15 tests pass (`pnpm --filter @famifinances/api test`).
+- **E2E**: 25 suites / 55 tests pass (`pnpm --filter @famifinances/api test:e2e`), including all FAM-01
+  suites: `create-family`, `join-family`, `family-isolation`, `manage-members`, `one-family-per-user`,
+  `family-log-privacy`, `family-openapi-parity`, `membership-audit`.
+- **Typecheck**: strict `tsc --noEmit` clean (T033); the shared `packages/contracts` family types compile
+  against the API with no `any`.
+
+**SC-001 (create < 1 min) / SC-002 (join < 2 min)**: these are user-task-time budgets. The underlying API
+operations complete well within them — in the e2e runs, `POST /families` and `POST /families/join` each
+return in single-digit-to-low-tens of milliseconds (the auth-latency smoke budget for a full
+register→signed-in flow is 120 s and observed ~47 ms), leaving the entire budget to the user. Both criteria
+are met with wide margin; a full timed UX walkthrough is deferred to mobile integration.

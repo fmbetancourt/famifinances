@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { FamilyDetail, FamilySummary, InviteCodeResponse } from '@famifinances/contracts';
 import { AccountRepository } from '../accounts/account.repository';
 import { MembershipRepository, isDuplicateKeyError } from '../memberships/membership.repository';
@@ -85,6 +92,51 @@ export class FamiliesService {
     const family = await this.families.findById(redeemed.familyId);
     this.logger.log(`family.joined id=${redeemed.familyId} member=${accountId}`);
     return { familyId: redeemed.familyId, name: family?.name ?? '', role: 'member' };
+  }
+
+  /**
+   * US4 · Owner removes a Member from the family (FR-015..FR-017). Owner-only is
+   * enforced by the role guard; the Owner cannot be removed, and the target must
+   * belong to the caller's family (isolation). Removal revokes access immediately.
+   */
+  async removeMember(
+    family: CurrentFamilyContext,
+    actorId: string,
+    targetAccountId: string,
+  ): Promise<void> {
+    const target = await this.memberships.findInFamily(family.familyId, targetAccountId);
+    if (!target) {
+      throw new NotFoundException('Member not found in this family.');
+    }
+    if (target.role === 'owner') {
+      throw new ForbiddenException('The Owner cannot be removed.');
+    }
+    await this.memberships.deleteByAccount(targetAccountId);
+    await this.events.append({
+      familyId: family.familyId,
+      accountId: targetAccountId,
+      actorId,
+      type: 'removed',
+    });
+    this.logger.log(`family.member.removed family=${family.familyId} member=${targetAccountId}`);
+  }
+
+  /**
+   * US5 · A Member leaves the family, freeing the account to join another
+   * (FR-018). The Owner may not leave (ownership transfer is out of scope).
+   */
+  async leaveFamily(family: CurrentFamilyContext, accountId: string): Promise<void> {
+    if (family.role === 'owner') {
+      throw new ForbiddenException('The Owner cannot leave the family.');
+    }
+    await this.memberships.deleteByAccount(accountId);
+    await this.events.append({
+      familyId: family.familyId,
+      accountId,
+      actorId: accountId,
+      type: 'left',
+    });
+    this.logger.log(`family.member.left family=${family.familyId} member=${accountId}`);
   }
 
   /** US3 · The caller's family + members, scoped from the session membership (FR-009). */

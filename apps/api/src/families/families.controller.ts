@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { FamilyDetail, FamilySummary, InviteCodeResponse } from '@famifinances/contracts';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -55,5 +65,27 @@ export class FamiliesController {
     @Body() dto: JoinFamilyDto,
   ): Promise<FamilySummary> {
     return this.families.joinFamily(user.accountId, dto.code);
+  }
+
+  @Delete('me/members/:accountId')
+  @UseGuards(JwtAuthGuard, FamilyScopeGuard, FamilyRoleGuard)
+  @Roles('owner')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentFamily() family: CurrentFamilyContext,
+    @Param('accountId') accountId: string,
+  ): Promise<void> {
+    await this.families.removeMember(family, user.accountId, accountId);
+  }
+
+  @Post('me/leave')
+  @UseGuards(JwtAuthGuard, FamilyScopeGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async leave(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentFamily() family: CurrentFamilyContext,
+  ): Promise<void> {
+    await this.families.leaveFamily(family, user.accountId);
   }
 }
