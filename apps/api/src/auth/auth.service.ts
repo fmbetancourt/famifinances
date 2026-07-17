@@ -116,6 +116,20 @@ export class AuthService {
     return this.issueSession(accountId, session.rotationChainId);
   }
 
+  /**
+   * US5 · Sign out (FR-012). Revokes the presented session so its refresh token
+   * can no longer be used. Idempotent: unknown tokens are silently ignored so
+   * logout never reveals whether a session existed.
+   */
+  async logout(refreshToken: string): Promise<void> {
+    const tokenHash = this.tokens.hashRefreshToken(refreshToken);
+    const session = await this.sessions.findByTokenHash(tokenHash);
+    if (session && !session.revokedAt) {
+      await this.sessions.revokeById(session.id);
+      this.logger.log(`account.signed_out id=${session.accountId.toString()}`);
+    }
+  }
+
   /** Issues an access token + a new rotating refresh token (persisted as a hash). */
   private async issueSession(
     accountId: string,

@@ -176,13 +176,13 @@ no-secrets-in-logs. Test tasks are written FIRST and must FAIL before implementa
 
 ### Tests for User Story 5 ⚠️ (write first, must fail)
 
-- [ ] T050 [P] [US5] Contract/e2e test for `POST /auth/logout` revoking the session in `apps/api/test/logout.e2e-spec.ts`
+- [X] T050 [P] [US5] Contract/e2e test for `POST /auth/logout` revoking the session in `apps/api/test/logout.e2e-spec.ts`
 
 ### Implementation for User Story 5
 
-- [ ] T051 [US5] Implement `AuthService.logout` (revoke the presented session) in `apps/api/src/auth/auth.service.ts`
-- [ ] T052 [US5] Implement `POST /auth/logout` (auth-guarded) in `apps/api/src/auth/auth.controller.ts`
-- [ ] T053 [P] [US5] Mobile: sign-out action clears secure store and routes to sign-in in `apps/mobile/src/features/auth/hooks/use-sign-out.ts`
+- [X] T051 [US5] Implement `AuthService.logout` (revoke the presented session) in `apps/api/src/auth/auth.service.ts`
+- [X] T052 [US5] Implement `POST /auth/logout` (auth-guarded) in `apps/api/src/auth/auth.controller.ts`
+- [X] T053 [P] [US5] Mobile: sign-out action clears secure store and routes to sign-in in `apps/mobile/src/features/auth/hooks/use-sign-out.ts`
 
 **Checkpoint**: Full session lifecycle (login → refresh → logout) works.
 
