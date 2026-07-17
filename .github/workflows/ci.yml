@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # Job name is referenced by the branch-protection required check (see quickstart).
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # mongodb-memory-server downloads a mongod binary on install; cache it.
+      - name: Cache mongod binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-memory-server
+          key: ${{ runner.os }}-mongod-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install (frozen lockfile, approved native builds)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared contracts
+        run: pnpm --filter @famifinances/contracts build
+
+      # Type check + lint fan out across the workspace (API, mobile, contracts),
+      # so both apps are exercised (FR-009, SC-007).
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test (API unit + e2e)
+        run: pnpm test
+
+      - name: Build (API)
+        run: pnpm --filter @famifinances/api build

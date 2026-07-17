@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "FamiFinances",
+    "slug": "famifinances",
+    "scheme": "famifinances",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true },
+    "android": {},
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": true }
+  }
+}

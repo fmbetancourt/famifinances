@@ -33,7 +33,6 @@ describe('Auth latency smoke (Polish)', () => {
 
     expect(login.status).toBe(200);
     expect(elapsed).toBeLessThan(REGISTER_TO_SIGNED_IN_BUDGET_MS);
-    // eslint-disable-next-line no-console
     console.log(`[latency] register→signed-in: ${elapsed}ms (budget ${REGISTER_TO_SIGNED_IN_BUDGET_MS}ms)`);
   });
 
@@ -49,7 +48,6 @@ describe('Auth latency smoke (Polish)', () => {
 
     expect(login.status).toBe(200);
     expect(elapsed).toBeLessThan(SIGN_IN_BUDGET_MS);
-    // eslint-disable-next-line no-console
     console.log(`[latency] sign-in: ${elapsed}ms (budget ${SIGN_IN_BUDGET_MS}ms)`);
   });
 });
