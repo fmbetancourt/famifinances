@@ -26,24 +26,29 @@ describe('Session-scoped authorization (US3)', () => {
       .post('/api/v1/auth/login')
       .send({ email, password: 'strongpassword1' });
 
-  it('ignores a foreign accountId in the request body and uses the token identity', async () => {
+  it('ignores a caller-supplied accountId and derives identity from the token (FR-011)', async () => {
     const alice = await register('authz-alice@example.com');
-    const aliceToken = (await login('authz-alice@example.com')).body.accessToken as string;
     const bob = await register('authz-bob@example.com');
+    const aliceToken = (await login('authz-alice@example.com')).body.accessToken as string;
+    const bobToken = (await login('authz-bob@example.com')).body.accessToken as string;
 
     const aliceId = alice.body.accountId as string;
     const bobId = bob.body.accountId as string;
     expect(aliceId).not.toBe(bobId);
 
-    // Alice's token, but the body tries to impersonate Bob.
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${aliceToken}`)
-      .send({ accountId: bobId });
+    // whoami-demo RECEIVES a claimedAccountId; with Alice's token, passing Bob's id
+    // must still resolve to Alice — the identifier from the caller is not trusted.
+    const spoofed = await request(app.getHttpServer())
+      .get(`/api/v1/auth/whoami-demo?claimedAccountId=${bobId}`)
+      .set('Authorization', `Bearer ${aliceToken}`);
+    expect(spoofed.status).toBe(200);
+    expect(spoofed.body.accountId).toBe(aliceId);
 
-    expect(res.status).toBe(200);
-    expect(res.body.accountId).toBe(aliceId);
-    expect(res.body.accountId).not.toBe(bobId);
-    expect(res.body.email).toBe('authz-alice@example.com');
+    // Identity is per-token: Bob's token resolves to Bob.
+    const bobWho = await request(app.getHttpServer())
+      .get('/api/v1/auth/whoami-demo')
+      .set('Authorization', `Bearer ${bobToken}`);
+    expect(bobWho.status).toBe(200);
+    expect(bobWho.body.accountId).toBe(bobId);
   });
 });

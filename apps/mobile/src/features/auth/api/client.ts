@@ -7,7 +7,6 @@ import type {
   ResetConfirmRequest,
   TokenPair,
 } from '@famifinances/contracts';
-import { getAccessToken } from '../storage/secure-token-store';
 
 export const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:3000/api/v1';
 
@@ -52,22 +51,4 @@ export function requestPasswordReset(input: EmailRequest): Promise<void> {
 
 export function confirmPasswordReset(input: ResetConfirmRequest): Promise<void> {
   return postJson<ResetConfirmRequest, void>('/auth/password/reset/confirm', input);
-}
-
-/** Authenticated GET: attaches the stored bearer access token. */
-async function authedGet<TResponse>(path: string): Promise<TResponse> {
-  const token = await getAccessToken();
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const payload = (await response.json().catch(() => ({}))) as { message?: string };
-  if (!response.ok) {
-    throw new ApiError(payload.message ?? 'Request failed', response.status);
-  }
-  return payload as TResponse;
-}
-
-/** Returns the current session identity, or throws ApiError(401) if unauthenticated. */
-export function getMe(): Promise<AccountSummary> {
-  return authedGet<AccountSummary>('/auth/me');
 }

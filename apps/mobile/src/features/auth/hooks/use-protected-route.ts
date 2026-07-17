@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { getMe } from '../api/client';
+import { fetchCurrentUser } from '../api/session';
 
 type AuthState = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -15,7 +15,7 @@ export function useProtectedRoute(): AuthState {
 
   useEffect(() => {
     let active = true;
-    getMe()
+    fetchCurrentUser()
       .then(() => active && setState('authenticated'))
       .catch(() => {
         if (!active) {

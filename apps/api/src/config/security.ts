@@ -5,11 +5,15 @@ import * as argon2 from 'argon2';
  * R1/R3/R4). Kept in one place so the hardening pass has a single source of truth.
  */
 
+// Lighter cost under NODE_ENV=test so the parallel e2e suite (many argon2 hashes
+// at once) does not saturate CPU and flake; production keeps the OWASP baseline.
+const IS_TEST = process.env.NODE_ENV === 'test';
+
 /** argon2id options for hashing low-entropy secrets (passwords, OTP codes). */
 export const ARGON2_OPTIONS: argon2.Options = {
   type: argon2.argon2id,
-  memoryCost: 19456, // 19 MiB
-  timeCost: 2,
+  memoryCost: IS_TEST ? 8192 : 19456, // 8 MiB in tests, 19 MiB in prod
+  timeCost: 2, // argon2 minimum is 2
   parallelism: 1,
 };
 
