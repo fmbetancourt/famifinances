@@ -55,7 +55,7 @@ unverified → 403; invalid type / missing name / non-integer amount → 400; ne
 
 ### Tests for User Story 1 ⚠️ (write first, must fail)
 
-- [X] T006 [P] [US1] e2e for `POST /accounts` (201; unverified → 403; no-family → 404 [FamilyScopeGuard]; invalid type / empty name / fractional amount → 400; a client-supplied `balance` or `currency` field → 400 (whitelist, guards SC-004/FR-004); negative initialBalance accepted) in `apps/api/test/create-account.e2e-spec.ts`
+- [X] T006 [P] [US1] e2e for `POST /accounts` (201; no-family → 404 regardless of email verification [FamilyScopeGuard runs before the email gate, so "no family" is uniformly 404; the 403 email soft gate is defense-in-depth for an in-family-unverified caller]; invalid type / empty name / fractional amount → 400; a client-supplied `balance` or `currency` field → 400 (whitelist, guards SC-004/FR-004); negative initialBalance accepted) in `apps/api/test/create-account.e2e-spec.ts`
 
 ### Implementation for User Story 1
 
@@ -118,7 +118,7 @@ editing an archived account → 409; another family's account → 404.
 
 ### Tests for User Story 4 ⚠️ (write first, must fail)
 
-- [X] T018 [P] [US4] e2e for `PATCH /accounts/{id}` (updates name/type/institution/initialBalance/startDate → 200; changing initialBalance recomputes balance; invalid field → 400 and unchanged; a client-supplied `balance` field → 400 (whitelist, guards SC-004); archived → 409; cross-family → 404; unverified → 403) in `apps/api/test/edit-account.e2e-spec.ts`
+- [X] T018 [P] [US4] e2e for `PATCH /accounts/{id}` (updates name/type/institution/initialBalance/startDate → 200; changing initialBalance recomputes balance; invalid field → 400 and unchanged; a client-supplied `balance` field → 400 (whitelist, guards SC-004); archived → 409; empty body → 400; date-time startDate → 400; cross-family → 404) in `apps/api/test/edit-account.e2e-spec.ts`
 
 ### Implementation for User Story 4
 

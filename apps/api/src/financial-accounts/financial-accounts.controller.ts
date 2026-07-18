@@ -30,8 +30,13 @@ import { ListAccountsQuery } from './dto/list-accounts.query';
 export class FinancialAccountsController {
   constructor(private readonly accounts: FinancialAccountsService) {}
 
+  // Guard order matters: FamilyScopeGuard runs before EmailVerifiedGuard so the
+  // Principle-I family boundary is evaluated first — "no family" is consistently a
+  // 404 across every route, and the 403 email soft gate (FR-011) is reserved for an
+  // in-family-but-unverified caller (defense-in-depth; the domain never produces one,
+  // since joining a family already requires a verified email).
   @Post()
-  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, FamilyScopeGuard)
+  @UseGuards(JwtAuthGuard, FamilyScopeGuard, EmailVerifiedGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(
     @CurrentUser() user: AuthenticatedUser,
@@ -60,7 +65,7 @@ export class FinancialAccountsController {
   }
 
   @Patch(':accountId')
-  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, FamilyScopeGuard)
+  @UseGuards(JwtAuthGuard, FamilyScopeGuard, EmailVerifiedGuard)
   async update(
     @CurrentFamily() family: CurrentFamilyContext,
     @Param('accountId') accountId: string,
@@ -70,7 +75,7 @@ export class FinancialAccountsController {
   }
 
   @Post(':accountId/archive')
-  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, FamilyScopeGuard)
+  @UseGuards(JwtAuthGuard, FamilyScopeGuard, EmailVerifiedGuard)
   @HttpCode(HttpStatus.OK)
   async archive(
     @CurrentFamily() family: CurrentFamilyContext,
@@ -80,7 +85,7 @@ export class FinancialAccountsController {
   }
 
   @Post(':accountId/unarchive')
-  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, FamilyScopeGuard)
+  @UseGuards(JwtAuthGuard, FamilyScopeGuard, EmailVerifiedGuard)
   @HttpCode(HttpStatus.OK)
   async unarchive(
     @CurrentFamily() family: CurrentFamilyContext,

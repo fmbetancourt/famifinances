@@ -25,7 +25,8 @@ Required passing checks (map to spec):
 
 - **US1 Create account**: a verified member of a family `POST /accounts` with `name`, `type`,
   `initialBalance`, `startDate` (optional `institution`) → `201`; the account is listed and ready for
-  movements. Unverified → `403`. Invalid type / missing name / non-integer amount → `400`.
+  movements. A caller with no family → `404` regardless of email verification (the family boundary is
+  checked before the email soft gate). Invalid type / missing name / non-integer amount → `400`.
 - **US2 See accounts + balances**: `GET /accounts` returns the family's active accounts; each account's
   `balance` equals its `initialBalance` (no movements yet); two members of the same family see the identical
   list and balances (SC-002).

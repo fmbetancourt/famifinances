@@ -59,23 +59,21 @@ describe('Create account (US1)', () => {
     expect(res.body.balance).toBe(-80000);
   });
 
-  it('blocks an unverified account from creating an account (403 soft gate)', async () => {
-    const email = 'acc-unverified@example.com';
+  it('rejects a caller with no family with 404, regardless of email verification', async () => {
+    // Verified but no family → 404 (FamilyScopeGuard).
+    const verified = await registerVerifiedUser(app, mail, 'acc-nofam-verified@example.com');
+    expect((await createAccount(app, verified.accessToken, valid)).status).toBe(404);
+
+    // Unverified and no family → also 404: the family boundary (Principle I) is checked
+    // before the email soft gate, so "no family" is consistently 404 (403 is reserved for
+    // an in-family-but-unverified caller, which the domain never produces).
+    const email = 'acc-nofam-unverified@example.com';
     const http = app.getHttpServer();
     await request(http).post('/api/v1/auth/register').send({ email, password: 'strongpassword1' });
     const token = (
       await request(http).post('/api/v1/auth/login').send({ email, password: 'strongpassword1' })
     ).body.accessToken as string;
-
-    const res = await createAccount(app, token, valid);
-    expect(res.status).toBe(403);
-  });
-
-  it('rejects a verified member who belongs to no family (404)', async () => {
-    const member = await registerVerifiedUser(app, mail, 'acc-nofamily@example.com');
-
-    const res = await createAccount(app, member.accessToken, valid);
-    expect(res.status).toBe(404);
+    expect((await createAccount(app, token, valid)).status).toBe(404);
   });
 
   it('rejects invalid input: unknown type, empty name, fractional amount (400)', async () => {
