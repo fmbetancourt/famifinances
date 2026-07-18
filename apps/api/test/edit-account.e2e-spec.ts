@@ -54,6 +54,26 @@ describe('Edit account (US4)', () => {
     expect(after.body).toMatchObject({ name: 'Editable', type: 'bank' });
   });
 
+  it('rejects an empty PATCH body (400, contract minProperties: 1)', async () => {
+    const { token, accountId } = await anAccount('edit-empty');
+
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/accounts/${accountId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a date-time startDate on edit (400, date-only contract)', async () => {
+    const { token, accountId } = await anAccount('edit-datetime');
+
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/accounts/${accountId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ startDate: '2026-07-01T00:00:00Z' });
+    expect(res.status).toBe(400);
+  });
+
   it('rejects a client-supplied balance field (400, whitelist guards SC-004)', async () => {
     const { token, accountId } = await anAccount('edit-whitelist');
 

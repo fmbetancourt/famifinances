@@ -31,7 +31,7 @@ Required passing checks (map to spec):
   list and balances (SC-002).
 - **US3 Isolation (SC-003, Principle I)**: an account created in family A is invisible to a member of
   family B; `GET/PATCH/POST /accounts/{id}` for A's id as a B member → `404`; a foreign `familyId` in the
-  request is ignored (family comes from the session); a user with no family → `403`.
+  request is ignored (family comes from the session); a user with no family → `404` (FamilyScopeGuard).
 - **US4 Edit account**: `PATCH /accounts/{id}` updates name/type/institution/initialBalance/startDate →
   `200`; changing `initialBalance` recomputes `balance`; invalid field → `400`, account unchanged.
 - **US5 Archive/unarchive**: `POST /accounts/{id}/archive` → `200`, the account drops out of the default

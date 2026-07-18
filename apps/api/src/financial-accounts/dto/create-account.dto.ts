@@ -1,6 +1,7 @@
-import { IsIn, IsInt, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import type { AccountType, CreateAccountRequest } from '@famifinances/contracts';
 import { ACCOUNT_TYPES } from '../financial-account.schema';
+import { IsCalendarDate } from './is-calendar-date.validator';
 
 export class CreateAccountDto implements CreateAccountRequest {
   @IsString()
@@ -15,8 +16,8 @@ export class CreateAccountDto implements CreateAccountRequest {
   @IsInt()
   initialBalance!: number;
 
-  // ISO calendar date (YYYY-MM-DD).
-  @IsISO8601({ strict: true })
+  // Calendar date (YYYY-MM-DD) — date-only, matching the OpenAPI `format: date` contract.
+  @IsCalendarDate()
   startDate!: string;
 
   @IsOptional()

@@ -31,7 +31,6 @@
 
 ## Notes
 
-- Two decisions carry documented defaults but are flagged in Assumptions as candidates for
-  `/speckit-clarify`: (1) whether the initial balance may be negative (credit-card debt), and
-  (2) whether account names must be unique within a family. Both have reasonable defaults, so no
-  [NEEDS CLARIFICATION] marker blocks planning; clarify can still refine them.
+- Two decisions were carried as defaults during `/speckit-specify` and **resolved** in `/speckit-clarify`
+  (Clarifications · Session 2026-07-17): (1) the initial balance may be negative (credit-card debt), and
+  (2) account names need not be unique within a family. No open ambiguity remains.

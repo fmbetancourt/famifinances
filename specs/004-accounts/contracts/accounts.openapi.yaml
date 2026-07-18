@@ -35,10 +35,11 @@ paths:
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403':
-          description: Email not verified (soft gate), or the caller belongs to no family.
+          description: Email not verified (soft gate).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
     get:
       tags: [accounts]
       summary: List the family's accounts
@@ -63,11 +64,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/AccountSummary' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403':
-          description: The caller belongs to no family.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /accounts/{accountId}:
     get:
@@ -187,7 +184,9 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/GenericError' }
     NotFound:
-      description: No such account in the caller's family.
+      description: >
+        No such account in the caller's family, or the caller belongs to no family
+        (the acting family is resolved from the session; a missing membership yields 404).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/GenericError' }

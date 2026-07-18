@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AccountStatusFilter, FinancialAccountSummary } from '@famifinances/contracts';
 import { FinancialAccountRepository, UpdateFinancialAccountPatch } from './financial-account.repository';
 import { FinancialAccountDocument } from './financial-account.schema';
@@ -60,15 +66,18 @@ export class FinancialAccountsService {
     dto: UpdateAccountDto,
   ): Promise<FinancialAccountSummary> {
     const existing = await this.requireInFamily(familyId, accountId);
-    if (existing.archivedAt !== null) {
-      throw new ConflictException('Account is archived; unarchive it before editing.');
-    }
     const patch: UpdateFinancialAccountPatch = {};
     if (dto.name !== undefined) patch.name = dto.name;
     if (dto.type !== undefined) patch.type = dto.type;
     if (dto.institution !== undefined) patch.institution = dto.institution;
     if (dto.initialBalance !== undefined) patch.initialBalance = dto.initialBalance;
     if (dto.startDate !== undefined) patch.startDate = new Date(dto.startDate);
+    if (Object.keys(patch).length === 0) {
+      throw new BadRequestException('Provide at least one field to update.');
+    }
+    if (existing.archivedAt !== null) {
+      throw new ConflictException('Account is archived; unarchive it before editing.');
+    }
     const updated = await this.accounts.updateInFamily(familyId, accountId, patch);
     return this.toSummary(updated ?? existing);
   }

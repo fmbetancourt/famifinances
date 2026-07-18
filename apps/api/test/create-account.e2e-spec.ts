@@ -85,6 +85,8 @@ describe('Create account (US1)', () => {
       { ...valid, type: 'crypto' },
       { ...valid, name: '' },
       { ...valid, initialBalance: 1000.5 },
+      { ...valid, startDate: '2026-07-01T12:00:00Z' }, // date-time, not a calendar date
+      { ...valid, startDate: '2026-02-30' }, // impossible calendar date
     ]) {
       const res = await createAccount(app, member.accessToken, bad);
       expect(res.status).toBe(400);
