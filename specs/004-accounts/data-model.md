@@ -42,7 +42,8 @@ named `FinancialAccount` (not `Account`) to avoid a Mongoose model clash with th
 - `institution`: optional; if present, length ≤ 80.
 - `initialBalance`: integer (no decimals); any sign allowed.
 - `startDate`: a valid date.
-- `currency`: only `CLP` accepted (if supplied); otherwise defaulted to `CLP`.
+- `currency`: **not accepted from client input** — it is fixed to `CLP` server-side. A client-supplied
+  `currency` field is rejected by the DTO whitelist (400), and it is not part of the request contract.
 
 **State transitions**:
 
