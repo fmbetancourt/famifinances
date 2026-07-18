@@ -1,0 +1,253 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Categories API (CAT-01)
+  version: 1.0.0
+  description: >
+    Income/expense categories. Every category has a fixed `kind`. System categories are global, read-only
+    defaults shared by all families; family categories are custom, owned by the caller's family. The acting
+    family is resolved from the session (FAM-01 FamilyScopeGuard), never from a caller-supplied identifier
+    (Principle I): a foreign custom category resolves to 404, and a system category is read-only (mutations
+    → 403). Writes require a verified email (EmailVerifiedGuard). Custom categories are archived, never
+    deleted; system defaults are immutable. The `kind` is fixed at creation.
+servers:
+  - url: /api/v1
+tags:
+  - name: categories
+paths:
+  /categories:
+    get:
+      tags: [categories]
+      summary: List the family's categories (system defaults + own custom)
+      description: >
+        Returns system defaults plus the caller family's active custom categories. `status=archived` returns
+        only the family's archived custom categories; `status=all` adds archived custom to the default set.
+        `kind` filters to one kind.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/CategoryKind' }
+          description: Filter to a single kind.
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, archived, all]
+            default: active
+          description: Which custom categories to include (default active). System defaults are always included unless status=archived.
+      responses:
+        '200':
+          description: The family's visible categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CategorySummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [categories]
+      summary: Create a custom category (any verified member)
+      description: Requires a verified email. The category is owned by the caller's family; scope is always `family`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCategoryRequest' }
+      responses:
+        '201':
+          description: Custom category created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategorySummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /categories/{categoryId}:
+    get:
+      tags: [categories]
+      summary: Get one category
+      description: A system default or a custom category owned by the caller's family; a foreign custom id → 404.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: The category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategorySummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [categories]
+      summary: Rename a custom category (active custom only)
+      description: Renames a family custom category. Requires a verified email. The kind never changes.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCategoryRequest' }
+      responses:
+        '200':
+          description: The renamed category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategorySummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate), or the target is a read-only system default.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The custom category is archived and read-only; unarchive it first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+  /categories/{categoryId}/archive:
+    post:
+      tags: [categories]
+      summary: Archive a custom category
+      description: Removes a family custom category from the active/pickable set without deleting it. Requires a verified email. Idempotent.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: The archived category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategorySummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate), or the target is a read-only system default.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /categories/{categoryId}/unarchive:
+    post:
+      tags: [categories]
+      summary: Unarchive a custom category
+      description: Restores an archived family custom category to the active set. Requires a verified email. Idempotent.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: The reactivated category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategorySummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate), or the target is a read-only system default.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema: { type: string }
+      description: The category's id. The family is still taken from the session, not this path.
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        No such category visible to the caller (a foreign family's custom category, or an unknown id), or the
+        caller belongs to no family (the acting family is resolved from the session; a missing membership
+        yields 404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: Input failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+
+  schemas:
+    CategoryKind:
+      type: string
+      enum: [income, expense]
+    CategoryScope:
+      type: string
+      enum: [system, family]
+    CreateCategoryRequest:
+      type: object
+      required: [name, kind]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        kind: { $ref: '#/components/schemas/CategoryKind' }
+    UpdateCategoryRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+    CategorySummary:
+      type: object
+      required: [categoryId, name, kind, scope, archived]
+      properties:
+        categoryId: { type: string }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/CategoryKind' }
+        scope: { $ref: '#/components/schemas/CategoryScope' }
+        archived: { type: boolean, description: Always false for system defaults. }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }
