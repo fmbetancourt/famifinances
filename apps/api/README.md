@@ -126,3 +126,29 @@ never deleted.
 | POST | `/accounts/:accountId/unarchive` | bearer + verified + family | Unarchive (idempotent) |
 
 See `specs/004-accounts/` for the spec, plan, data model, and OpenAPI contract.
+
+## Categories (CAT-01) & the classification kind (Principle III foundation)
+
+Categories live in `src/categories/` in one `categories` collection with a `scope` discriminator:
+**system** (global, read-only defaults, `familyId: null`) and **family** (custom, owned by one family).
+System defaults are **seeded idempotently on startup** (`CategoriesModule` `OnModuleInit` → upsert by
+`{ scope, kind, name }`, guarded by a partial unique index), so every family has a usable income/expense set
+with zero setup. Custom categories reuse the family-scope guard: `CategoryRepository.findVisible` matches a
+system default **or** a custom category owned by the session family, so a foreign custom id → `404` and a
+system default is read-only (rename/archive → `403`).
+
+Every category carries a fixed, **immutable** `kind` (`income` | `expense`) — the update contract has no
+`kind` field. This is the anchor **TXN-01** uses to enforce the constitution's integrity rule ("an income
+category is never applied to an expense, nor vice versa"), and **BUD-01** budgets by category. Custom
+categories are archived (read-only, `409` on rename), never deleted; system defaults are immutable.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/categories?kind=&status=` | bearer + family | List defaults + own custom (active default; archived/all) |
+| GET | `/categories/:categoryId` | bearer + family | Get one visible category (404 if not visible) |
+| POST | `/categories` | bearer + verified + family | Create a custom category (name + kind) |
+| PATCH | `/categories/:categoryId` | bearer + verified + family | Rename custom (403 system, 409 archived) |
+| POST | `/categories/:categoryId/archive` | bearer + verified + family | Archive custom (idempotent; 403 system) |
+| POST | `/categories/:categoryId/unarchive` | bearer + verified + family | Unarchive custom (idempotent) |
+
+See `specs/005-categories/` for the spec, plan, data model, and OpenAPI contract.
