@@ -54,6 +54,16 @@ describe('Edit account (US4)', () => {
     expect(after.body).toMatchObject({ name: 'Editable', type: 'bank' });
   });
 
+  it('rejects a whitespace-only name (400, would blank the account)', async () => {
+    const { token, accountId } = await anAccount('edit-blank-name');
+
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/accounts/${accountId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: '   ' });
+    expect(res.status).toBe(400);
+  });
+
   it('rejects an empty PATCH body (400, contract minProperties: 1)', async () => {
     const { token, accountId } = await anAccount('edit-empty');
 
