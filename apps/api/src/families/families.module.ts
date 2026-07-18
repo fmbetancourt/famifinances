@@ -19,5 +19,8 @@ import { FamilyRoleGuard } from './guards/family-role.guard';
   ],
   controllers: [FamiliesController],
   providers: [FamilyRepository, FamiliesService, FamilyScopeGuard, FamilyRoleGuard],
+  // Export the Principle-I scope guard (+ its MembershipsModule dep) so downstream
+  // feature modules (ACC-01, TXN-01, …) reuse the family boundary rather than re-derive it.
+  exports: [FamilyScopeGuard, MembershipsModule],
 })
 export class FamiliesModule {}
