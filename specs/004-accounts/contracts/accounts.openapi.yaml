@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Accounts API (ACC-01)
+  version: 1.0.0
+  description: >
+    Family financial accounts. All routes require a valid access token (AUTH-01) and family membership;
+    the acting family is resolved from the session (FAM-01 FamilyScopeGuard), never from a caller-supplied
+    identifier (Principle I). Writes additionally require a verified email (EmailVerifiedGuard). An
+    account's balance is derived (initial balance + movements); in ACC-01 there are no movements, so it
+    equals the initial balance. Amounts are whole-peso CLP integers. Archived accounts are read-only;
+    accounts are archived, never deleted.
+servers:
+  - url: /api/v1
+tags:
+  - name: accounts
+paths:
+  /accounts:
+    post:
+      tags: [accounts]
+      summary: Create an account (any verified member)
+      description: Requires a verified email. The account is owned by the caller's family (from the session).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAccountRequest' }
+      responses:
+        '201':
+          description: Account created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [accounts]
+      summary: List the family's accounts
+      description: Returns the caller family's accounts. Active only by default; use `status` to include archived.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, archived, all]
+            default: active
+          description: Which accounts to return (default active).
+      responses:
+        '200':
+          description: The family's accounts (each with its derived balance).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AccountSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /accounts/{accountId}:
+    get:
+      tags: [accounts]
+      summary: Get one account
+      description: Resolved within the caller's family; a foreign or unknown id returns 404.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The account with its derived balance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [accounts]
+      summary: Edit an account (active accounts only)
+      description: Partial update. Requires a verified email. Editing an archived account is rejected (409).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAccountRequest' }
+      responses:
+        '200':
+          description: The updated account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The account is archived and is read-only; unarchive it first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+
+  /accounts/{accountId}/archive:
+    post:
+      tags: [accounts]
+      summary: Archive an account
+      description: Removes the account from active use without deleting its data. Requires a verified email.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The archived account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /accounts/{accountId}/unarchive:
+    post:
+      tags: [accounts]
+      summary: Unarchive an account
+      description: Restores an archived account to active use. Requires a verified email.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The reactivated account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema: { type: string }
+      description: The account's id. The family is still taken from the session, not this path.
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        No such account in the caller's family, or the caller belongs to no family
+        (the acting family is resolved from the session; a missing membership yields 404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: Input failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+
+  schemas:
+    AccountType:
+      type: string
+      enum: [bank, digital_wallet, cash, credit_card]
+    CreateAccountRequest:
+      type: object
+      required: [name, type, initialBalance, startDate]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        type: { $ref: '#/components/schemas/AccountType' }
+        institution: { type: string, maxLength: 80, nullable: true }
+        initialBalance:
+          type: integer
+          description: Whole-peso CLP amount; may be negative, zero, or positive.
+        startDate: { type: string, format: date }
+    UpdateAccountRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        type: { $ref: '#/components/schemas/AccountType' }
+        institution: { type: string, maxLength: 80, nullable: true }
+        initialBalance: { type: integer }
+        startDate: { type: string, format: date }
+    AccountSummary:
+      type: object
+      required: [accountId, name, type, initialBalance, balance, currency, startDate, archived]
+      properties:
+        accountId: { type: string }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/AccountType' }
+        institution: { type: string, nullable: true }
+        initialBalance: { type: integer, description: Whole-peso CLP initial balance. }
+        balance:
+          type: integer
+          description: Derived balance (initial balance + movements); equals initialBalance in ACC-01.
+        currency: { type: string, enum: [CLP] }
+        startDate: { type: string, format: date }
+        archived: { type: boolean }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }

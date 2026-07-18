@@ -98,3 +98,31 @@ Family-scoped features (ACC-01, TXN-01, BUD-01, …) MUST resolve the acting fam
 
 Downstream feature modules should depend on `@CurrentFamily()`/`FamilyScopeGuard` for their data
 boundary rather than re-deriving the family, so Principle I stays enforced in one place.
+`FamiliesModule` **exports** `FamilyScopeGuard` (and re-exports `MembershipsModule`) so a feature module
+just imports `FamiliesModule` to reuse it.
+
+## Financial accounts (ACC-01) & derived balance (Principle III)
+
+Financial accounts live in `src/financial-accounts/` — named `FinancialAccount` (collection
+`financialAccounts`) to avoid a Mongoose model clash with the AUTH-01 `Account` (user identity). They are
+the first consumer of the family-scope guard: every `FinancialAccountRepository` query is bound to the
+session `familyId`, so a foreign or unknown account id resolves to `404`.
+
+The account's **current balance is derived, never stored as an editable field** (constitution
+Principle III): only `initialBalance` is persisted, and `FinancialAccountsService.deriveBalance()` computes
+`balance = initialBalance + Σ(movements)` at read time. In ACC-01 there are no movements, so it equals the
+initial balance. **TXN-01/BUD-01 extend `deriveBalance()`** (adding the movement aggregation) without
+changing the account document or the `balance` contract field — this is the pattern later financial
+features build on. Amounts are whole-peso `CLP` integers; accounts are archived (read-only, `409` on edit),
+never deleted.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/accounts` | bearer + verified + family | Create an account |
+| GET | `/accounts?status=` | bearer + family | List accounts (active default; archived/all) |
+| GET | `/accounts/:accountId` | bearer + family | Get one account (404 if not in family) |
+| PATCH | `/accounts/:accountId` | bearer + verified + family | Edit (409 if archived) |
+| POST | `/accounts/:accountId/archive` | bearer + verified + family | Archive (idempotent) |
+| POST | `/accounts/:accountId/unarchive` | bearer + verified + family | Unarchive (idempotent) |
+
+See `specs/004-accounts/` for the spec, plan, data model, and OpenAPI contract.
