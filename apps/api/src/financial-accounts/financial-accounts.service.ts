@@ -1,11 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { AccountStatusFilter, FinancialAccountSummary } from '@famifinances/contracts';
+import { MovementBalanceService } from '../movements/movement-balance.service';
 import { FinancialAccountRepository, UpdateFinancialAccountPatch } from './financial-account.repository';
 import { FinancialAccountDocument } from './financial-account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -15,15 +18,22 @@ import { UpdateAccountDto } from './dto/update-account.dto';
 export class FinancialAccountsService {
   private readonly logger = new Logger('FinancialAccounts');
 
-  constructor(private readonly accounts: FinancialAccountRepository) {}
+  constructor(
+    private readonly accounts: FinancialAccountRepository,
+    // TXN-01 · movements contribute to the derived balance. forwardRef breaks the
+    // accounts⇄movements module cycle (accounts need sums; movements validate accounts).
+    @Inject(forwardRef(() => MovementBalanceService))
+    private readonly balances: MovementBalanceService,
+  ) {}
 
   /**
    * Constitution III · the current balance is DERIVED, never stored as an editable
-   * field. In ACC-01 there are no movements, so it equals the initial balance;
-   * TXN-01 extends this to `initialBalance + Σ(movements)`.
+   * field: `initialBalance + net movements` (income +, expense −, excluding deleted).
+   * `net` is 0 for an account with no movements, so the balance equals the initial
+   * balance until movements exist.
    */
-  deriveBalance(account: { initialBalance: number }): number {
-    return account.initialBalance;
+  deriveBalance(initialBalance: number, net = 0): number {
+    return initialBalance + net;
   }
 
   /** US1 · Create a family-scoped account; the caller becomes its author (FR-001, FR-014). */
@@ -42,18 +52,20 @@ export class FinancialAccountsService {
       startDate: new Date(dto.startDate),
     });
     this.logger.log(`account.created id=${doc.id} family=${familyId}`);
-    return this.toSummary(doc);
+    return this.toSummary(doc, 0); // a new account has no movements yet
   }
 
   /** US2 · The family's accounts (active by default), scoped from the session (FR-006). */
   async listAccounts(familyId: string, status: AccountStatusFilter): Promise<FinancialAccountSummary[]> {
     const docs = await this.accounts.findByFamily(familyId, status);
-    return docs.map((doc) => this.toSummary(doc));
+    const nets = await this.balances.netByFamily(familyId); // one aggregation for the whole family
+    return docs.map((doc) => this.toSummary(doc, nets[doc.id] ?? 0));
   }
 
   /** US2/US3 · One account, resolved within the caller's family (404 otherwise). */
   async getAccount(familyId: string, accountId: string): Promise<FinancialAccountSummary> {
-    return this.toSummary(await this.requireInFamily(familyId, accountId));
+    const doc = await this.requireInFamily(familyId, accountId);
+    return this.toSummary(doc, await this.balances.netForAccount(familyId, accountId));
   }
 
   /**
@@ -79,29 +91,31 @@ export class FinancialAccountsService {
       throw new ConflictException('Account is archived; unarchive it before editing.');
     }
     const updated = await this.accounts.updateInFamily(familyId, accountId, patch);
-    return this.toSummary(updated ?? existing);
+    return this.toSummary(updated ?? existing, await this.balances.netForAccount(familyId, accountId));
   }
 
   /** US5 · Archive an account (idempotent no-op if already archived). */
   async archive(familyId: string, accountId: string): Promise<FinancialAccountSummary> {
     const existing = await this.requireInFamily(familyId, accountId);
+    const net = await this.balances.netForAccount(familyId, accountId);
     if (existing.archivedAt !== null) {
-      return this.toSummary(existing); // idempotent
+      return this.toSummary(existing, net); // idempotent
     }
     const updated = await this.accounts.setArchived(familyId, accountId, new Date());
     this.logger.log(`account.archived id=${accountId} family=${familyId}`);
-    return this.toSummary(updated ?? existing);
+    return this.toSummary(updated ?? existing, net);
   }
 
   /** US5 · Unarchive an account (idempotent no-op if already active). */
   async unarchive(familyId: string, accountId: string): Promise<FinancialAccountSummary> {
     const existing = await this.requireInFamily(familyId, accountId);
+    const net = await this.balances.netForAccount(familyId, accountId);
     if (existing.archivedAt === null) {
-      return this.toSummary(existing); // idempotent
+      return this.toSummary(existing, net); // idempotent
     }
     const updated = await this.accounts.setArchived(familyId, accountId, null);
     this.logger.log(`account.unarchived id=${accountId} family=${familyId}`);
-    return this.toSummary(updated ?? existing);
+    return this.toSummary(updated ?? existing, net);
   }
 
   private async requireInFamily(
@@ -115,14 +129,14 @@ export class FinancialAccountsService {
     return account;
   }
 
-  private toSummary(doc: FinancialAccountDocument): FinancialAccountSummary {
+  private toSummary(doc: FinancialAccountDocument, net: number): FinancialAccountSummary {
     return {
       accountId: doc.id,
       name: doc.name,
       type: doc.type,
       institution: doc.institution,
       initialBalance: doc.initialBalance,
-      balance: this.deriveBalance(doc),
+      balance: this.deriveBalance(doc.initialBalance, net),
       currency: 'CLP',
       startDate: doc.startDate.toISOString().slice(0, 10),
       archived: doc.archivedAt !== null,

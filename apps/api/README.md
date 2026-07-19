@@ -152,3 +152,32 @@ categories are archived (read-only, `409` on rename), never deleted; system defa
 | POST | `/categories/:categoryId/unarchive` | bearer + verified + family | Unarchive custom (idempotent) |
 
 See `specs/005-categories/` for the spec, plan, data model, and OpenAPI contract.
+
+## Movements (TXN-01) — the financial source of truth
+
+Movements live in `src/movements/` (collections `movements` + append-only `movementEvents`). A member records
+income/expense movements (positive whole-peso CLP amount; the type carries the direction). Each movement's
+account must be an **active** account of the family and, if a category is given, it must be visible to the
+family with a **kind matching the movement type** (`income`↔`income`, `expense`↔`expense`) — constitution III;
+a mismatch or a foreign/archived reference is `400`. Movements are family-scoped (a foreign movement → `404`).
+
+**Derived balance (Principle III)**: TXN-01 extends ACC-01's `deriveBalance` to `initialBalance + net`, where
+`net` is `Σ income − Σ expense` over the account's non-deleted movements (`MovementBalanceService`, one grouped
+aggregation). No stored editable balance. The accounts⇄movements pair is a genuine bidirectional dependency
+(accounts pull sums; movements validate accounts) resolved with a scoped **`forwardRef`** between
+`FinancialAccountsModule` and `MovementsModule`.
+
+**Delete + audit**: deletion is **soft** (`deletedAt`) — excluded from balances and history but retained. Every
+create/edit/delete appends a `MovementEvent` (actor, type, timestamp, snapshot) that **survives** the deletion
+(FR-011). Re-deleting is idempotent (`204`).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/movements` | bearer + verified + family | Record an income/expense movement |
+| GET | `/movements?account=&type=` | bearer + family | List the family's movements (newest first) |
+| GET | `/movements/:movementId` | bearer + family | Get one movement (404 if not visible) |
+| PATCH | `/movements/:movementId` | bearer + verified + family | Edit (re-validated; balances recompute) |
+| DELETE | `/movements/:movementId` | bearer + verified + family | Soft-delete (idempotent, auditable) |
+
+TXN-01 is the financial source of truth that TXN-02 (transfers), BUD-01 (budgets), DASH-01 (dashboard), and
+HIS-01 (history filters) build on. See `specs/006-movements/`.

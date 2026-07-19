@@ -1,0 +1,236 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Movements API (TXN-01)
+  version: 1.0.0
+  description: >
+    Income and expense movements — the family's financial source of truth. All routes require a valid access
+    token (AUTH-01) and family membership; the acting family is resolved from the session (FAM-01
+    FamilyScopeGuard), never from a caller-supplied identifier (Principle I). Writes require a verified email
+    (EmailVerifiedGuard). A movement's account must be an active account of the family; a category (optional)
+    must be visible to the family and its kind must match the movement type (Principle III). Amounts are
+    positive whole-peso CLP integers; the type determines the effect on the account balance (income +,
+    expense −). The account balance is derived (initial + income − expense, excluding deleted). Deletion is
+    soft and auditable; every create/edit/delete appends a MovementEvent. Transfers are out of scope (TXN-02).
+servers:
+  - url: /api/v1
+tags:
+  - name: movements
+paths:
+  /movements:
+    post:
+      tags: [movements]
+      summary: Record an income or expense movement (any verified member)
+      description: Requires a verified email. The movement is owned by the caller's family (from the session).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMovementRequest' }
+      responses:
+        '201':
+          description: Movement recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovementSummary' }
+        '400':
+          description: >
+            Invalid input, or the account/category is not available to the family, or the category kind does
+            not match the movement type.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [movements]
+      summary: List the family's movements (most recent first)
+      description: Non-deleted movements of the caller's family, newest first. Filterable by account and type.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: account
+          in: query
+          required: false
+          schema: { type: string }
+          description: Filter to a single account id (of the caller's family).
+        - name: type
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/MovementType' }
+          description: Filter to a single movement type.
+      responses:
+        '200':
+          description: The family's movements, most recent first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MovementSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /movements/{movementId}:
+    get:
+      tags: [movements]
+      summary: Get one movement
+      description: A non-deleted movement of the caller's family; a foreign or unknown id → 404.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MovementId'
+      responses:
+        '200':
+          description: The movement.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovementSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [movements]
+      summary: Edit a movement
+      description: Partial update, re-validated. Requires a verified email. Recomputes the affected balances.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MovementId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMovementRequest' }
+      responses:
+        '200':
+          description: The updated movement.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovementSummary' }
+        '400':
+          description: Invalid input, unavailable account/category, or category kind mismatch.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [movements]
+      summary: Delete a movement (soft, auditable)
+      description: >
+        Soft-deletes a movement: it is excluded from balances and history but retained for audit. Requires a
+        verified email. Idempotent for an already-deleted movement (still 204).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MovementId'
+      responses:
+        '204': { description: Movement deleted; excluded from balances and history. Audit record preserved. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    MovementId:
+      name: movementId
+      in: path
+      required: true
+      schema: { type: string }
+      description: The movement's id. The family is still taken from the session, not this path.
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        No such movement in the caller's family (a foreign family's movement, a deleted movement, or an
+        unknown id), or the caller belongs to no family (the acting family is resolved from the session; a
+        missing membership yields 404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+
+  schemas:
+    MovementType:
+      type: string
+      enum: [income, expense]
+    CreateMovementRequest:
+      type: object
+      required: [type, amount, date, accountId]
+      additionalProperties: false
+      properties:
+        type: { $ref: '#/components/schemas/MovementType' }
+        amount: { type: integer, minimum: 1, description: Positive whole-peso CLP amount. }
+        date: { type: string, format: date }
+        accountId: { type: string }
+        categoryId: { type: string, nullable: true }
+        note: { type: string, maxLength: 280, nullable: true }
+    UpdateMovementRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        type: { $ref: '#/components/schemas/MovementType' }
+        amount: { type: integer, minimum: 1 }
+        date: { type: string, format: date }
+        accountId: { type: string }
+        categoryId: { type: string, nullable: true }
+        note: { type: string, maxLength: 280, nullable: true }
+    MovementSummary:
+      type: object
+      required: [movementId, type, amount, date, accountId]
+      properties:
+        movementId: { type: string }
+        type: { $ref: '#/components/schemas/MovementType' }
+        amount: { type: integer, description: Positive whole-peso CLP amount. }
+        date: { type: string, format: date }
+        accountId: { type: string }
+        categoryId: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }
