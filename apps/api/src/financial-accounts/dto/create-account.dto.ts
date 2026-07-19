@@ -2,7 +2,7 @@ import { Transform } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import type { AccountType, CreateAccountRequest } from '@famifinances/contracts';
 import { ACCOUNT_TYPES } from '../financial-account.schema';
-import { IsCalendarDate } from './is-calendar-date.validator';
+import { IsCalendarDate } from '../../common/validators/is-calendar-date.validator';
 
 /** Trims a string value before validation so whitespace-only input fails MinLength. */
 const trim = ({ value }: { value: unknown }): unknown =>

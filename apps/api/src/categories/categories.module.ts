@@ -14,6 +14,8 @@ import { CategoriesController } from './categories.controller';
   ],
   controllers: [CategoriesController],
   providers: [CategoriesService, CategoryRepository],
+  // Exported so TXN-01 (movements) can validate a referenced category + its kind.
+  exports: [CategoryRepository],
 })
 export class CategoriesModule implements OnModuleInit {
   constructor(private readonly categories: CategoriesService) {}

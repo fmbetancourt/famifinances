@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { FamiliesModule } from './families/families.module';
 import { FinancialAccountsModule } from './financial-accounts/financial-accounts.module';
 import { CategoriesModule } from './categories/categories.module';
+import { MovementsModule } from './movements/movements.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { MailModule } from './mail/mail.module';
     FamiliesModule,
     FinancialAccountsModule,
     CategoriesModule,
+    MovementsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
