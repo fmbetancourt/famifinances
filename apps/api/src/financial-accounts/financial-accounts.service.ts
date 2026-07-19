@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { AccountStatusFilter, FinancialAccountSummary } from '@famifinances/contracts';
 import { MovementBalanceService } from '../movements/movement-balance.service';
+import { TransferBalanceService } from '../transfers/transfer-balance.service';
 import { FinancialAccountRepository, UpdateFinancialAccountPatch } from './financial-account.repository';
 import { FinancialAccountDocument } from './financial-account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -20,20 +21,32 @@ export class FinancialAccountsService {
 
   constructor(
     private readonly accounts: FinancialAccountRepository,
-    // TXN-01 · movements contribute to the derived balance. forwardRef breaks the
-    // accounts⇄movements module cycle (accounts need sums; movements validate accounts).
+    // TXN-01/TXN-02 · movements AND transfers contribute to the derived balance.
+    // forwardRef breaks the accounts⇄movements and accounts⇄transfers cycles
+    // (accounts need the sums; movements/transfers validate accounts back).
     @Inject(forwardRef(() => MovementBalanceService))
-    private readonly balances: MovementBalanceService,
+    private readonly movementBalances: MovementBalanceService,
+    @Inject(forwardRef(() => TransferBalanceService))
+    private readonly transferBalances: TransferBalanceService,
   ) {}
 
   /**
    * Constitution III · the current balance is DERIVED, never stored as an editable
-   * field: `initialBalance + net movements` (income +, expense −, excluding deleted).
-   * `net` is 0 for an account with no movements, so the balance equals the initial
-   * balance until movements exist.
+   * field: `initialBalance + net` where `net` sums movements (income +, expense −)
+   * and transfers (−out, +in), excluding deleted. `net` is 0 for an account with no
+   * movements or transfers, so the balance equals the initial balance until they exist.
    */
   deriveBalance(initialBalance: number, net = 0): number {
     return initialBalance + net;
+  }
+
+  /** Net contribution (movements + transfers) for one account of the family. */
+  private async netForAccount(familyId: string, accountId: string): Promise<number> {
+    const [movementNet, transferNet] = await Promise.all([
+      this.movementBalances.netForAccount(familyId, accountId),
+      this.transferBalances.netForAccount(familyId, accountId),
+    ]);
+    return movementNet + transferNet;
   }
 
   /** US1 · Create a family-scoped account; the caller becomes its author (FR-001, FR-014). */
@@ -58,14 +71,20 @@ export class FinancialAccountsService {
   /** US2 · The family's accounts (active by default), scoped from the session (FR-006). */
   async listAccounts(familyId: string, status: AccountStatusFilter): Promise<FinancialAccountSummary[]> {
     const docs = await this.accounts.findByFamily(familyId, status);
-    const nets = await this.balances.netByFamily(familyId); // one aggregation for the whole family
-    return docs.map((doc) => this.toSummary(doc, nets[doc.id] ?? 0));
+    // One aggregation each (movements + transfers) for the whole family.
+    const [movementNets, transferNets] = await Promise.all([
+      this.movementBalances.netByFamily(familyId),
+      this.transferBalances.netByFamily(familyId),
+    ]);
+    return docs.map((doc) =>
+      this.toSummary(doc, (movementNets[doc.id] ?? 0) + (transferNets[doc.id] ?? 0)),
+    );
   }
 
   /** US2/US3 · One account, resolved within the caller's family (404 otherwise). */
   async getAccount(familyId: string, accountId: string): Promise<FinancialAccountSummary> {
     const doc = await this.requireInFamily(familyId, accountId);
-    return this.toSummary(doc, await this.balances.netForAccount(familyId, accountId));
+    return this.toSummary(doc, await this.netForAccount(familyId, accountId));
   }
 
   /**
@@ -91,13 +110,13 @@ export class FinancialAccountsService {
       throw new ConflictException('Account is archived; unarchive it before editing.');
     }
     const updated = await this.accounts.updateInFamily(familyId, accountId, patch);
-    return this.toSummary(updated ?? existing, await this.balances.netForAccount(familyId, accountId));
+    return this.toSummary(updated ?? existing, await this.netForAccount(familyId, accountId));
   }
 
   /** US5 · Archive an account (idempotent no-op if already archived). */
   async archive(familyId: string, accountId: string): Promise<FinancialAccountSummary> {
     const existing = await this.requireInFamily(familyId, accountId);
-    const net = await this.balances.netForAccount(familyId, accountId);
+    const net = await this.netForAccount(familyId, accountId);
     if (existing.archivedAt !== null) {
       return this.toSummary(existing, net); // idempotent
     }
@@ -109,7 +128,7 @@ export class FinancialAccountsService {
   /** US5 · Unarchive an account (idempotent no-op if already active). */
   async unarchive(familyId: string, accountId: string): Promise<FinancialAccountSummary> {
     const existing = await this.requireInFamily(familyId, accountId);
-    const net = await this.balances.netForAccount(familyId, accountId);
+    const net = await this.netForAccount(familyId, accountId);
     if (existing.archivedAt === null) {
       return this.toSummary(existing, net); // idempotent
     }

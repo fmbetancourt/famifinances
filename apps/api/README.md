@@ -181,3 +181,31 @@ create/edit/delete appends a `MovementEvent` (actor, type, timestamp, snapshot) 
 
 TXN-01 is the financial source of truth that TXN-02 (transfers), BUD-01 (budgets), DASH-01 (dashboard), and
 HIS-01 (history filters) build on. See `specs/006-movements/`.
+
+## Transfers (TXN-02) — move between accounts, no double counting
+
+Transfers live in `src/transfers/` (collections `transfers` + append-only `transferEvents`). A member records
+a transfer between two of the family's **active** accounts (`fromAccountId ≠ toAccountId`); a transfer
+decreases the origin balance and increases the destination by the same amount and **never changes income or
+expense totals** — it is a distinct record (no category, no type) in its own collection, so it is never
+counted as income/expense (no double counting, constitution III).
+
+**Derived balance**: TXN-02 extends the composition so each account's balance is
+`initialBalance + movementNet + transferNet` (transferNet = `+in − out`). `FinancialAccountsService` injects
+both `MovementBalanceService` and `TransferBalanceService` (two scoped `forwardRef`s); `deriveBalance` stays
+the pure `initialBalance + net` function. No stored editable balance.
+
+**Delete + audit**: deletion is soft (`deletedAt`) — excluded from balances and the list, retained. Every
+create/edit/delete appends a `TransferEvent` (actor, type, timestamp, snapshot) that survives deletion. Both
+accounts are validated as active + own; `from == to` → `400`; re-deleting is idempotent (`204`).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/transfers` | bearer + verified + family | Record a transfer between two accounts |
+| GET | `/transfers?account=` | bearer + family | List transfers (newest first; account = origin or destination) |
+| GET | `/transfers/:transferId` | bearer + family | Get one transfer (404 if not visible) |
+| PATCH | `/transfers/:transferId` | bearer + verified + family | Edit (re-validated; balances recompute) |
+| DELETE | `/transfers/:transferId` | bearer + verified + family | Soft-delete (idempotent, auditable) |
+
+TXN-02 completes the income/expense/transfer money model that BUD-01 (budgets), DASH-01 (dashboard), and
+HIS-01 (history) build on. See `specs/007-transfers/`.
