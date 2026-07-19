@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Transfers API (TXN-02)
+  version: 1.0.0
+  description: >
+    Transfers between two of the family's accounts. All routes require a valid access token (AUTH-01) and
+    family membership; the acting family is resolved from the session (FAM-01 FamilyScopeGuard), never from a
+    caller-supplied identifier (Principle I). Writes require a verified email (EmailVerifiedGuard). Both
+    accounts must be active accounts of the family and must differ. A transfer decreases the origin balance
+    and increases the destination by the same amount and NEVER changes income/expense totals (no double
+    counting). Amounts are positive whole-peso CLP integers. The account balance is derived (initial +
+    movements + transfers). Deletion is soft and auditable; every create/edit/delete appends a TransferEvent.
+servers:
+  - url: /api/v1
+tags:
+  - name: transfers
+paths:
+  /transfers:
+    post:
+      tags: [transfers]
+      summary: Record a transfer between two family accounts (any verified member)
+      description: Requires a verified email. Both accounts must be active accounts of the caller's family and must differ.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTransferRequest' }
+      responses:
+        '201':
+          description: Transfer recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferSummary' }
+        '400':
+          description: Invalid input, a foreign/archived account, or origin == destination.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [transfers]
+      summary: List the family's transfers (most recent first)
+      description: Non-deleted transfers of the caller's family, newest first. Filterable by account (origin or destination).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: account
+          in: query
+          required: false
+          schema: { type: string }
+          description: Filter to transfers where this account is the origin or destination.
+      responses:
+        '200':
+          description: The family's transfers, most recent first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TransferSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /transfers/{transferId}:
+    get:
+      tags: [transfers]
+      summary: Get one transfer
+      description: A non-deleted transfer of the caller's family; a foreign or unknown id → 404.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransferId'
+      responses:
+        '200':
+          description: The transfer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [transfers]
+      summary: Edit a transfer
+      description: Partial update, re-validated. Requires a verified email. Recomputes the affected balances.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransferId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTransferRequest' }
+      responses:
+        '200':
+          description: The updated transfer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferSummary' }
+        '400':
+          description: Invalid input, a foreign/archived account, or origin == destination.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [transfers]
+      summary: Delete a transfer (soft, auditable)
+      description: >
+        Soft-deletes a transfer: it is excluded from balances and the list but retained for audit. Requires a
+        verified email. Idempotent for an already-deleted transfer (still 204).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransferId'
+      responses:
+        '204': { description: Transfer deleted; excluded from balances and the list. Audit record preserved. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Email not verified (soft gate).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TransferId:
+      name: transferId
+      in: path
+      required: true
+      schema: { type: string }
+      description: The transfer's id. The family is still taken from the session, not this path.
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        No such transfer in the caller's family (a foreign family's transfer, a deleted transfer, or an
+        unknown id), or the caller belongs to no family (the acting family is resolved from the session; a
+        missing membership yields 404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: Input failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+
+  schemas:
+    CreateTransferRequest:
+      type: object
+      required: [amount, date, fromAccountId, toAccountId]
+      additionalProperties: false
+      properties:
+        amount: { type: integer, minimum: 1, description: Positive whole-peso CLP amount. }
+        date: { type: string, format: date }
+        fromAccountId: { type: string }
+        toAccountId: { type: string }
+        note: { type: string, maxLength: 280, nullable: true }
+    UpdateTransferRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        amount: { type: integer, minimum: 1 }
+        date: { type: string, format: date }
+        fromAccountId: { type: string }
+        toAccountId: { type: string }
+        note: { type: string, maxLength: 280, nullable: true }
+    TransferSummary:
+      type: object
+      required: [transferId, amount, date, fromAccountId, toAccountId]
+      properties:
+        transferId: { type: string }
+        amount: { type: integer, description: Positive whole-peso CLP amount. }
+        date: { type: string, format: date }
+        fromAccountId: { type: string }
+        toAccountId: { type: string }
+        note: { type: string, nullable: true }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }

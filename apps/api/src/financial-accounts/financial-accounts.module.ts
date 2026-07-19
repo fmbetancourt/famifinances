@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { FamiliesModule } from '../families/families.module';
 import { MovementsModule } from '../movements/movements.module';
+import { TransfersModule } from '../transfers/transfers.module';
 import { FinancialAccount, FinancialAccountSchema } from './financial-account.schema';
 import { FinancialAccountRepository } from './financial-account.repository';
 import { FinancialAccountsService } from './financial-accounts.service';
@@ -14,9 +15,10 @@ import { FinancialAccountsController } from './financial-accounts.controller';
     ]),
     // Reuses FAM-01's FamilyScopeGuard (exported by FamiliesModule) for the Principle-I boundary.
     FamiliesModule,
-    // TXN-01 · the derived balance sums movements (MovementBalanceService). forwardRef
-    // breaks the accounts⇄movements cycle (movements validate accounts back).
+    // TXN-01/TXN-02 · the derived balance sums movements + transfers. forwardRef breaks
+    // the accounts⇄movements and accounts⇄transfers cycles (they validate accounts back).
     forwardRef(() => MovementsModule),
+    forwardRef(() => TransfersModule),
   ],
   controllers: [FinancialAccountsController],
   providers: [FinancialAccountsService, FinancialAccountRepository],
