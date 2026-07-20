@@ -8,6 +8,7 @@ import { MovementEvent, MovementEventSchema } from './movement-event.schema';
 import { MovementRepository } from './movement.repository';
 import { MovementEventRepository } from './movement-event.repository';
 import { MovementBalanceService } from './movement-balance.service';
+import { MovementSpendService } from './movement-spend.service';
 import { MovementsService } from './movements.service';
 import { MovementsController } from './movements.controller';
 
@@ -24,8 +25,14 @@ import { MovementsController } from './movements.controller';
     forwardRef(() => FinancialAccountsModule),
   ],
   controllers: [MovementsController],
-  providers: [MovementsService, MovementRepository, MovementEventRepository, MovementBalanceService],
-  // Exported so ACC-01's derived balance can sum movements.
-  exports: [MovementBalanceService],
+  providers: [
+    MovementsService,
+    MovementRepository,
+    MovementEventRepository,
+    MovementBalanceService,
+    MovementSpendService,
+  ],
+  // MovementBalanceService → ACC-01 derived balance; MovementSpendService → BUD-01 real spend.
+  exports: [MovementBalanceService, MovementSpendService],
 })
 export class MovementsModule {}

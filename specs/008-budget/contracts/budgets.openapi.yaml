@@ -1,0 +1,188 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Budget API (BUD-01)
+  version: 1.0.0
+  description: >
+    Monthly per-category budgets. All routes require a valid access token (AUTH-01) and family membership; the
+    acting family is resolved from the session (FAM-01 FamilyScopeGuard), never from a caller-supplied
+    identifier (Principle I). Viewing the budget report is available to any member; setting and removing
+    allocations is OWNER-ONLY (FamilyRoleGuard) and requires a verified email. Only expense categories can be
+    budgeted (CAT-01 kind). Real spend is DERIVED from TXN-01 expense movements (never stored). Amounts are
+    positive whole-peso CLP integers. The monthly total is the sum of the per-category allocations.
+servers:
+  - url: /api/v1
+tags:
+  - name: budgets
+paths:
+  /budgets:
+    get:
+      tags: [budgets]
+      summary: The month's budget report (planned vs real spend)
+      description: Any family member. Returns per-category lines + an overall summary; period defaults to the current month.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+          description: Calendar month (YYYY-MM); defaults to the current month.
+      responses:
+        '200':
+          description: The budget report for the month.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetReport' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [budgets]
+      summary: Set (create or update) a category's budget for a month — Owner only
+      description: >
+        Owner-only, verified email. Upserts the planned amount for the (month, category); the category must be
+        an active expense category of the family.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetBudgetRequest' }
+      responses:
+        '200':
+          description: The saved allocation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetAllocationSummary' }
+        '400':
+          description: Invalid input, or the category is not an available expense category of the family.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GenericError'
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The caller is not the family Owner, or the Owner's email is not verified.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /budgets/{budgetId}:
+    delete:
+      tags: [budgets]
+      summary: Remove a category's budget for a month — Owner only
+      description: Owner-only, verified email. Removing a budget never affects movements.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema: { type: string }
+          description: The allocation id (from the report). The family is still taken from the session, not this path.
+      responses:
+        '204': { description: Allocation removed. Movements are unaffected. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The caller is not the family Owner, or the Owner's email is not verified.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        No such budget allocation in the caller's family (a foreign id or unknown id), or the caller belongs to
+        no family (the acting family is resolved from the session; a missing membership yields 404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: Input failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+
+  schemas:
+    BudgetStatus:
+      type: string
+      enum: [under, near, over]
+    SetBudgetRequest:
+      type: object
+      required: [period, categoryId, plannedAmount]
+      additionalProperties: false
+      properties:
+        period: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        categoryId: { type: string }
+        plannedAmount: { type: integer, minimum: 1, description: Positive whole-peso CLP amount. }
+    BudgetAllocationSummary:
+      type: object
+      required: [budgetId, period, categoryId, plannedAmount]
+      properties:
+        budgetId: { type: string }
+        period: { type: string }
+        categoryId: { type: string }
+        plannedAmount: { type: integer }
+    BudgetLine:
+      type: object
+      required: [budgetId, categoryId, categoryName, plannedAmount, realSpend, available, percentConsumed, status]
+      properties:
+        budgetId: { type: string }
+        categoryId: { type: string }
+        categoryName: { type: string }
+        plannedAmount: { type: integer }
+        realSpend: { type: integer, description: Sum of the month's expense movements for the category. }
+        available: { type: integer, description: plannedAmount − realSpend (may be negative). }
+        percentConsumed: { type: integer, description: round(realSpend / plannedAmount × 100). }
+        status: { $ref: '#/components/schemas/BudgetStatus' }
+    BudgetSummary:
+      type: object
+      required: [totalPlanned, totalRealSpend, totalAvailable, percentConsumed]
+      properties:
+        totalPlanned: { type: integer }
+        totalRealSpend: { type: integer }
+        totalAvailable: { type: integer }
+        percentConsumed: { type: integer }
+    BudgetReport:
+      type: object
+      required: [period, lines, summary]
+      properties:
+        period: { type: string }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetLine' }
+        summary: { $ref: '#/components/schemas/BudgetSummary' }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }

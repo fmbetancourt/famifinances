@@ -12,6 +12,7 @@ import { FinancialAccountsModule } from './financial-accounts/financial-accounts
 import { CategoriesModule } from './categories/categories.module';
 import { MovementsModule } from './movements/movements.module';
 import { TransfersModule } from './transfers/transfers.module';
+import { BudgetsModule } from './budgets/budgets.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -29,6 +30,7 @@ import { MailModule } from './mail/mail.module';
     CategoriesModule,
     MovementsModule,
     TransfersModule,
+    BudgetsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
