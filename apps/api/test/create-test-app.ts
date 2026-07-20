@@ -1,18 +1,14 @@
-import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModuleBuilder } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import { UniformErrorFilter } from '../src/common/filters/uniform-error.filter';
+import { configureApp } from '../src/app.setup';
 import { MAIL_PORT, MailMessage, MailPort } from '../src/mail/mail.port';
 
 async function buildApp(builder: TestingModuleBuilder): Promise<INestApplication> {
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-  );
-  app.useGlobalFilters(new UniformErrorFilter());
+  // Same edge hardening + validation as production bootstrap (SEC-01).
+  configureApp(app);
   await app.init();
   return app;
 }

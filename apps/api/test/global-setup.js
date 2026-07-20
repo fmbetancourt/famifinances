@@ -8,4 +8,7 @@ module.exports = async () => {
   process.env.MONGODB_URI = mongo.getUri();
   process.env.JWT_SECRET = 'test-secret-value-please-change';
   process.env.MAIL_FROM_ADDRESS = 'no-reply@famifinances.test';
+  // SEC-01: relax the credential rate limit for the auth-heavy e2e suites (many
+  // register/login per suite). The dedicated throttle spec lowers it for its file only.
+  process.env.AUTH_RATE_LIMIT = process.env.AUTH_RATE_LIMIT || '1000';
 };

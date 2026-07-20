@@ -34,3 +34,35 @@ export const THROTTLE = {
   ttlMs: 60_000,
   limit: 30,
 } as const;
+
+/**
+ * SEC-01 · stricter per-IP rate limit for credential endpoints (SEC FR-004), layered
+ * on top of the global THROTTLE and the per-account LOGIN_LOCKOUT. Read from the
+ * environment (secure defaults) so it is tunable without a code change (SEC FR-010).
+ */
+export const AUTH_THROTTLE = {
+  limit: Number(process.env.AUTH_RATE_LIMIT ?? 5),
+  ttlMs: Number(process.env.AUTH_RATE_TTL_MS ?? 60_000),
+} as const;
+
+/** SEC-01 · parsed CORS origin allowlist; empty ⇒ deny all cross-origin browser access (SEC FR-002). */
+export const CORS_ALLOWED_ORIGINS: string[] = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
+/** SEC-01 · max JSON request body size (SEC FR-003). */
+export const BODY_LIMIT = process.env.REQUEST_BODY_LIMIT ?? '100kb';
+
+/**
+ * SEC-01 · helmet options for global security headers (SEC FR-001). HSTS with a
+ * ~180-day max-age, frameguard DENY, nosniff, no-referrer, `X-Powered-By` hidden.
+ * The Content-Security-Policy is disabled here because the API serves JSON (and the
+ * Swagger UI at /api/docs), not first-party HTML that a CSP would protect.
+ */
+export const SECURITY_HEADERS = {
+  hsts: { maxAge: 15_552_000, includeSubDomains: true },
+  frameguard: { action: 'deny' as const },
+  referrerPolicy: { policy: 'no-referrer' as const },
+  contentSecurityPolicy: false as const,
+} as const;

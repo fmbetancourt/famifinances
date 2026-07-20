@@ -22,6 +22,11 @@
       "@nestjs/core",
       "argon2",
       "mongodb-memory-server"
-    ]
+    ],
+    "auditConfig": {
+      "//": "SEC-01: block-by-default. Each id ignored here MUST have a matching entry (rationale, reviewer, date) in docs/security-checklist.md.",
+      "ignoreCves": [],
+      "ignoreGhsas": []
+    }
   }
 }

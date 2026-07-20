@@ -44,6 +44,16 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # SEC-01 (FR-012): report high/critical dependency advisories on every build. The
+      # step is non-blocking (`continue-on-error`) because the current monorepo tree carries
+      # pre-existing highs from the Expo/React-Native mobile app (not deployed) and build
+      # tooling; the audit output is reviewed at the pre-pilot gate (docs/security-checklist.md,
+      # §4.2), and accepted advisories are recorded there + in `pnpm.auditConfig`. Tighten to
+      # a hard failure once the deployed API surface is advisory-free (QLT track).
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
       - name: Test (API unit + e2e)
         run: pnpm test
 

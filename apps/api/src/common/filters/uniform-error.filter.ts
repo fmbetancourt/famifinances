@@ -45,10 +45,32 @@ export class UniformErrorFilter implements ExceptionFilter {
       return;
     }
 
+    // Transport-level errors (e.g. body-parser's 413 payload-too-large or a 400 on
+    // malformed JSON) arrive as http-errors carrying a numeric status, not a Nest
+    // HttpException. Honor the status with a generic message — no internal detail (SEC-01).
+    const status = httpStatusOf(exception);
+    if (status !== null) {
+      const message = status === HttpStatus.PAYLOAD_TOO_LARGE ? 'Payload too large.' : 'Bad request.';
+      response.status(status).json({ message });
+      return;
+    }
+
     // Unknown/unexpected error: log redacted, return opaque 500.
     this.logger.error(redact({ error: String(exception) }));
     response
       .status(HttpStatus.INTERNAL_SERVER_ERROR)
       .json({ message: 'An unexpected error occurred.' });
   }
+}
+
+/** The HTTP status carried by an http-errors-style error (body-parser, etc.), or null. */
+function httpStatusOf(exception: unknown): number | null {
+  if (exception !== null && typeof exception === 'object') {
+    const candidate = exception as { status?: unknown; statusCode?: unknown };
+    const status = typeof candidate.status === 'number' ? candidate.status : candidate.statusCode;
+    if (typeof status === 'number' && status >= 400 && status < 600) {
+      return status;
+    }
+  }
+  return null;
 }
