@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import type { MovementType } from '@famifinances/contracts';
+import { escapeRegex } from '../common/escape-regex';
 import { Movement, MovementDocument } from './movement.schema';
 
 export interface CreateMovementInput {
@@ -42,6 +43,21 @@ export interface CategorySpend {
 export interface IncomeExpenseTotals {
   income: number;
   expense: number;
+}
+
+/** HIS-01 history filters (all optional; combined with AND). */
+export interface MovementHistoryFilters {
+  from?: string;
+  to?: string;
+  type?: MovementType;
+  account?: string;
+  category?: string;
+  search?: string;
+}
+
+export interface MovementHistoryResult {
+  items: MovementDocument[];
+  total: number;
 }
 
 /**
@@ -201,6 +217,57 @@ export class MovementRepository {
       else if (row._id === 'expense') totals.expense = row.total;
     }
     return totals;
+  }
+
+  /**
+   * HIS-01 · a filtered, ordered, paginated page of the family's non-deleted movements
+   * plus the total match count. All provided filters combine with AND. Foreign/malformed
+   * account or category ids short-circuit to an empty result (never a cross-family read).
+   * A blank note `search` is ignored so note-less movements are not excluded.
+   */
+  async searchHistory(
+    familyId: string,
+    filters: MovementHistoryFilters,
+    page: { limit: number; offset: number },
+  ): Promise<MovementHistoryResult> {
+    const query: FilterQuery<MovementDocument> = {
+      familyId: new Types.ObjectId(familyId),
+      deletedAt: null,
+    };
+
+    if (filters.from || filters.to) {
+      // Occurrence dates are stored at UTC midnight, so an inclusive $lte on the `to`
+      // day's midnight includes that whole day.
+      const dateClause: { $gte?: Date; $lte?: Date } = {};
+      if (filters.from) dateClause.$gte = new Date(`${filters.from}T00:00:00.000Z`);
+      if (filters.to) dateClause.$lte = new Date(`${filters.to}T00:00:00.000Z`);
+      query.date = dateClause;
+    }
+    if (filters.type) {
+      query.type = filters.type;
+    }
+    if (filters.account) {
+      if (!Types.ObjectId.isValid(filters.account)) {
+        return { items: [], total: 0 };
+      }
+      query.accountId = new Types.ObjectId(filters.account);
+    }
+    if (filters.category) {
+      if (!Types.ObjectId.isValid(filters.category)) {
+        return { items: [], total: 0 };
+      }
+      query.categoryId = new Types.ObjectId(filters.category);
+    }
+    const search = filters.search?.trim();
+    if (search) {
+      query.note = { $regex: escapeRegex(search), $options: 'i' };
+    }
+
+    const [items, total] = await Promise.all([
+      this.model.find(query).sort({ date: -1, createdAt: -1 }).skip(page.offset).limit(page.limit).exec(),
+      this.model.countDocuments(query).exec(),
+    ]);
+    return { items, total };
   }
 
   /**

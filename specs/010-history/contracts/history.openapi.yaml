@@ -1,0 +1,138 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Movement History API (HIS-01)
+  version: 1.0.0
+  description: >
+    A READ-ONLY, filterable, paginated history of the family's TXN-01 movements. Requires a valid access token
+    (AUTH-01) and family membership; the acting family is resolved from the session (FAM-01 FamilyScopeGuard),
+    never from a caller-supplied identifier (Principle I). Filters — date range, type, account, category, and a
+    case-insensitive note substring — combine with AND semantics over the family's non-deleted movements,
+    ordered newest first, and are returned in offset/limit pages (limit default 20, max 100) with the total
+    count and a "more results" flag. A foreign or malformed account/category filter never returns another
+    family's movements. Transfers are not included (movements only). Amounts are whole-peso CLP.
+servers:
+  - url: /api/v1
+tags:
+  - name: history
+paths:
+  /history:
+    get:
+      tags: [history]
+      summary: The family's filtered, paginated movement history (any member)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+          description: Inclusive lower bound on the occurrence date (YYYY-MM-DD).
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+          description: Inclusive upper bound on the occurrence date (YYYY-MM-DD).
+        - name: type
+          in: query
+          required: false
+          schema: { type: string, enum: [income, expense] }
+        - name: account
+          in: query
+          required: false
+          schema: { type: string }
+          description: Account id filter (family-scoped; a foreign/malformed id yields no matches).
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+          description: Category id filter (family-scoped; a foreign/malformed id yields no matches).
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
+          description: Case-insensitive substring match over the movement note.
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: A page of the filtered history.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovementHistoryPage' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        The caller belongs to no family — the acting family is resolved from the session, and a missing
+        membership yields 404 (consistent with the other modules).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: A filter or paging parameter failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+
+  schemas:
+    MovementSummary:
+      type: object
+      required: [movementId, type, amount, date, accountId, categoryId, note]
+      properties:
+        movementId: { type: string }
+        type: { type: string, enum: [income, expense] }
+        amount: { type: integer, description: Positive whole-peso CLP amount. }
+        date: { type: string, format: date, description: ISO calendar date (YYYY-MM-DD). }
+        accountId: { type: string }
+        categoryId: { type: [string, 'null'] }
+        note: { type: [string, 'null'] }
+    MovementHistoryPage:
+      type: object
+      required: [items, total, limit, offset, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MovementSummary' }
+          description: The page's movements, newest first (occurrence date desc, then creation desc).
+        total: { type: integer, description: Total movements matching the filters (ignoring paging). }
+        limit: { type: integer, description: The effective page size applied. }
+        offset: { type: integer, description: The effective offset applied. }
+        hasMore: { type: boolean, description: offset + items.length < total. }
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }
