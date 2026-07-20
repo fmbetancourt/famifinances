@@ -135,4 +135,19 @@ export class TransferRepository {
       .exec();
     return rows.map((r) => ({ accountId: r._id.toString(), net: r.net }));
   }
+
+  /**
+   * The most recent change time across the family's transfers (create/edit/soft-delete
+   * all bump `updatedAt`), regardless of deletion. Null when the family has no transfers.
+   * Combined with the movement equivalent for DASH-01's "last updated" mark.
+   */
+  async latestChangeAt(familyId: string): Promise<Date | null> {
+    const doc = await this.model
+      .findOne({ familyId: new Types.ObjectId(familyId) })
+      .sort({ updatedAt: -1 })
+      .select('updatedAt')
+      .lean<{ updatedAt?: Date }>()
+      .exec();
+    return doc?.updatedAt ?? null;
+  }
 }

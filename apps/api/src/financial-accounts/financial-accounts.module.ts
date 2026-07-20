@@ -22,7 +22,8 @@ import { FinancialAccountsController } from './financial-accounts.controller';
   ],
   controllers: [FinancialAccountsController],
   providers: [FinancialAccountsService, FinancialAccountRepository],
-  // Exported so TXN-01 (movements) can validate a referenced account.
-  exports: [FinancialAccountRepository],
+  // FinancialAccountRepository → TXN-01 validates a referenced account;
+  // FinancialAccountsService → DASH-01 reads active accounts' derived balances (net worth).
+  exports: [FinancialAccountRepository, FinancialAccountsService],
 })
 export class FinancialAccountsModule {}

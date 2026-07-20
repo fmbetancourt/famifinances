@@ -9,6 +9,7 @@ import { MovementRepository } from './movement.repository';
 import { MovementEventRepository } from './movement-event.repository';
 import { MovementBalanceService } from './movement-balance.service';
 import { MovementSpendService } from './movement-spend.service';
+import { MovementSummaryService } from './movement-summary.service';
 import { MovementsService } from './movements.service';
 import { MovementsController } from './movements.controller';
 
@@ -31,8 +32,10 @@ import { MovementsController } from './movements.controller';
     MovementEventRepository,
     MovementBalanceService,
     MovementSpendService,
+    MovementSummaryService,
   ],
-  // MovementBalanceService → ACC-01 derived balance; MovementSpendService → BUD-01 real spend.
-  exports: [MovementBalanceService, MovementSpendService],
+  // MovementBalanceService → ACC-01 balance; MovementSpendService → BUD-01 real spend;
+  // MovementSummaryService → DASH-01 money summary + last-updated.
+  exports: [MovementBalanceService, MovementSpendService, MovementSummaryService],
 })
 export class MovementsModule {}

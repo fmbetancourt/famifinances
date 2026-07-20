@@ -18,5 +18,7 @@ import { BudgetsController } from './budgets.controller';
   ],
   controllers: [BudgetsController],
   providers: [BudgetsService, BudgetAllocationRepository],
+  // Exported so DASH-01 can read the budget report (planned-vs-real overview).
+  exports: [BudgetsService],
 })
 export class BudgetsModule {}

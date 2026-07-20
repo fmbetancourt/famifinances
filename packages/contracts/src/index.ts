@@ -5,3 +5,4 @@ export * from './category/index';
 export * from './movement/index';
 export * from './transfer/index';
 export * from './budget/index';
+export * from './dashboard/index';
