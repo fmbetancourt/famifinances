@@ -35,7 +35,8 @@ import { MovementsController } from './movements.controller';
     MovementSummaryService,
   ],
   // MovementBalanceService → ACC-01 balance; MovementSpendService → BUD-01 real spend;
-  // MovementSummaryService → DASH-01 money summary + last-updated.
-  exports: [MovementBalanceService, MovementSpendService, MovementSummaryService],
+  // MovementSummaryService → DASH-01 money summary + last-updated;
+  // MovementRepository → HIS-01 history query.
+  exports: [MovementBalanceService, MovementSpendService, MovementSummaryService, MovementRepository],
 })
 export class MovementsModule {}
