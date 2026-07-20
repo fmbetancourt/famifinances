@@ -34,6 +34,11 @@ export interface AccountNet {
   net: number;
 }
 
+export interface CategorySpend {
+  categoryId: string;
+  spend: number;
+}
+
 /**
  * Family-scoped persistence for movements. EVERY query is bound to the caller's
  * `familyId` (from the session), so a foreign or unknown id resolves to null → 404
@@ -141,5 +146,29 @@ export class MovementRepository {
       ])
       .exec();
     return rows.map((r) => ({ accountId: r._id.toString(), net: r.net }));
+  }
+
+  /**
+   * Sum of the family's categorized expense movements per category in the
+   * half-open date range [from, to), excluding deleted — BUD-01's real spend
+   * (Principle III: derived, never stored). Uncategorized expenses contribute
+   * to no budget line.
+   */
+  async sumExpenseByCategory(familyId: string, from: Date, to: Date): Promise<CategorySpend[]> {
+    const rows = await this.model
+      .aggregate<{ _id: Types.ObjectId; spend: number }>([
+        {
+          $match: {
+            familyId: new Types.ObjectId(familyId),
+            type: 'expense',
+            deletedAt: null,
+            categoryId: { $ne: null },
+            date: { $gte: from, $lt: to },
+          },
+        },
+        { $group: { _id: '$categoryId', spend: { $sum: '$amount' } } },
+      ])
+      .exec();
+    return rows.map((r) => ({ categoryId: r._id.toString(), spend: r.spend }));
   }
 }
