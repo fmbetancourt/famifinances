@@ -1,0 +1,151 @@
+openapi: 3.1.0
+info:
+  title: FamiFinances Dashboard API (DASH-01)
+  version: 1.0.0
+  description: >
+    The family's shared monthly dashboard — a single READ-ONLY view. Requires a valid access token (AUTH-01)
+    and family membership; the acting family is resolved from the session (FAM-01 FamilyScopeGuard), never from
+    a caller-supplied identifier (Principle I). For a calendar month (default the current month) it returns the
+    money summary (total income, total expense, net), each active account's derived balance and the total net
+    worth, the budget overview (BUD-01 summary + the over/near category highlights), and a "last updated" mark
+    (the latest movement/transfer change, or null). Everything is DERIVED on demand (Principle III): transfers
+    are excluded from income/expense, balances are computed, and nothing is stored. Amounts are whole-peso CLP.
+    The dashboard never states or implies a real-time bank balance.
+servers:
+  - url: /api/v1
+tags:
+  - name: dashboard
+paths:
+  /dashboard:
+    get:
+      tags: [dashboard]
+      summary: The family's monthly dashboard (any member)
+      description: >
+        Any family member. Returns the month's money summary, account balances + net worth, budget overview, and
+        the last-updated mark. Read-only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+          description: Calendar month (YYYY-MM); defaults to the current month.
+      responses:
+        '200':
+          description: The dashboard for the month.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    NotFound:
+      description: >
+        The caller belongs to no family — the acting family is resolved from the session, and a missing
+        membership yields 404 (consistent with the other modules).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericError' }
+    ValidationError:
+      description: The `period` failed server-side validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorBody' }
+
+  schemas:
+    BudgetStatus:
+      type: string
+      enum: [under, near, over]
+    MoneySummary:
+      type: object
+      required: [totalIncome, totalExpense, net]
+      properties:
+        totalIncome: { type: integer, description: Sum of the month's income movements (CLP). }
+        totalExpense: { type: integer, description: Sum of the month's expense movements (CLP). }
+        net: { type: integer, description: totalIncome − totalExpense (may be negative). }
+    DashboardAccountBalance:
+      type: object
+      required: [accountId, name, type, balance]
+      properties:
+        accountId: { type: string }
+        name: { type: string }
+        type:
+          type: string
+          enum: [bank, digital_wallet, cash, credit_card]
+          description: Mirrors ACC-01 AccountType; reuse that shared type rather than redefining it.
+        balance: { type: integer, description: Derived balance (initial + movements + transfers), CLP. }
+    BudgetSummary:
+      type: object
+      required: [totalPlanned, totalRealSpend, totalAvailable, percentConsumed]
+      properties:
+        totalPlanned: { type: integer }
+        totalRealSpend: { type: integer }
+        totalAvailable: { type: integer }
+        percentConsumed: { type: integer }
+    BudgetLine:
+      type: object
+      required: [budgetId, categoryId, categoryName, plannedAmount, realSpend, available, percentConsumed, status]
+      properties:
+        budgetId: { type: string }
+        categoryId: { type: string }
+        categoryName: { type: string }
+        plannedAmount: { type: integer }
+        realSpend: { type: integer }
+        available: { type: integer }
+        percentConsumed: { type: integer }
+        status: { $ref: '#/components/schemas/BudgetStatus' }
+    DashboardBudget:
+      type: object
+      required: [summary, highlights]
+      properties:
+        summary: { $ref: '#/components/schemas/BudgetSummary' }
+        highlights:
+          type: array
+          description: The month's budget lines flagged near or over (never under), in report order.
+          items: { $ref: '#/components/schemas/BudgetLine' }
+    DashboardResponse:
+      type: object
+      required: [period, moneySummary, accounts, netWorth, budget, lastUpdated]
+      properties:
+        period: { type: string }
+        moneySummary: { $ref: '#/components/schemas/MoneySummary' }
+        accounts:
+          type: array
+          items: { $ref: '#/components/schemas/DashboardAccountBalance' }
+        netWorth: { type: integer, description: Sum of the active accounts' derived balances (CLP). }
+        budget: { $ref: '#/components/schemas/DashboardBudget' }
+        lastUpdated:
+          type: [string, 'null']
+          description: ISO timestamp of the latest movement/transfer change, or null when there is none.
+    GenericError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ValidationErrorBody:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              rule: { type: string }

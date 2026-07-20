@@ -1,16 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { MovementRepository } from './movement.repository';
+import { monthBounds } from './month-bounds';
 
 /** Real expense spend keyed by category id. */
 export type SpendByCategory = Record<string, number>;
-
-/** Half-open UTC month bounds [from, to) for a 'YYYY-MM' period. */
-function monthBounds(period: string): { from: Date; to: Date } {
-  const [year, month] = period.split('-').map(Number); // month is 1..12
-  const from = new Date(Date.UTC(year, month - 1, 1));
-  const to = new Date(Date.UTC(year, month, 1)); // month=12 → next January (year rolls over)
-  return { from, to };
-}
 
 /**
  * Derives per-category real spend for a month from TXN-01 expense movements

@@ -7,6 +7,7 @@ import { TransferEvent, TransferEventSchema } from './transfer-event.schema';
 import { TransferRepository } from './transfer.repository';
 import { TransferEventRepository } from './transfer-event.repository';
 import { TransferBalanceService } from './transfer-balance.service';
+import { TransferSummaryService } from './transfer-summary.service';
 import { TransfersService } from './transfers.service';
 import { TransfersController } from './transfers.controller';
 
@@ -22,8 +23,14 @@ import { TransfersController } from './transfers.controller';
     forwardRef(() => FinancialAccountsModule),
   ],
   controllers: [TransfersController],
-  providers: [TransfersService, TransferRepository, TransferEventRepository, TransferBalanceService],
-  // Exported so ACC-01's derived balance can sum transfers alongside movements.
-  exports: [TransferBalanceService],
+  providers: [
+    TransfersService,
+    TransferRepository,
+    TransferEventRepository,
+    TransferBalanceService,
+    TransferSummaryService,
+  ],
+  // TransferBalanceService → ACC-01 derived balance; TransferSummaryService → DASH-01 last-updated.
+  exports: [TransferBalanceService, TransferSummaryService],
 })
 export class TransfersModule {}

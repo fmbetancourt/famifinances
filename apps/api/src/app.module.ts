@@ -13,6 +13,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { MovementsModule } from './movements/movements.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { BudgetsModule } from './budgets/budgets.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { MailModule } from './mail/mail.module';
     MovementsModule,
     TransfersModule,
     BudgetsModule,
+    DashboardModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

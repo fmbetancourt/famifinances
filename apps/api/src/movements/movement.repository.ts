@@ -39,6 +39,11 @@ export interface CategorySpend {
   spend: number;
 }
 
+export interface IncomeExpenseTotals {
+  income: number;
+  expense: number;
+}
+
 /**
  * Family-scoped persistence for movements. EVERY query is bound to the caller's
  * `familyId` (from the session), so a foreign or unknown id resolves to null → 404
@@ -170,5 +175,46 @@ export class MovementRepository {
       ])
       .exec();
     return rows.map((r) => ({ categoryId: r._id.toString(), spend: r.spend }));
+  }
+
+  /**
+   * Gross income and expense totals for the family in the half-open range [from, to),
+   * excluding deleted — DASH-01's money summary. Transfers live in a separate
+   * collection and are never matched here (FR-003, no double counting).
+   */
+  async sumByTypeInPeriod(familyId: string, from: Date, to: Date): Promise<IncomeExpenseTotals> {
+    const rows = await this.model
+      .aggregate<{ _id: MovementType; total: number }>([
+        {
+          $match: {
+            familyId: new Types.ObjectId(familyId),
+            deletedAt: null,
+            date: { $gte: from, $lt: to },
+          },
+        },
+        { $group: { _id: '$type', total: { $sum: '$amount' } } },
+      ])
+      .exec();
+    const totals: IncomeExpenseTotals = { income: 0, expense: 0 };
+    for (const row of rows) {
+      if (row._id === 'income') totals.income = row.total;
+      else if (row._id === 'expense') totals.expense = row.total;
+    }
+    return totals;
+  }
+
+  /**
+   * The most recent change time across the family's movements (create/edit/soft-delete
+   * all bump `updatedAt`), regardless of deletion — a deletion is a change worth
+   * reflecting. Null when the family has no movements. Powers DASH-01's "last updated".
+   */
+  async latestChangeAt(familyId: string): Promise<Date | null> {
+    const doc = await this.model
+      .findOne({ familyId: new Types.ObjectId(familyId) })
+      .sort({ updatedAt: -1 })
+      .select('updatedAt')
+      .lean<{ updatedAt?: Date }>()
+      .exec();
+    return doc?.updatedAt ?? null;
   }
 }
