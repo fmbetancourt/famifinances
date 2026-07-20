@@ -7,7 +7,9 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { AccountSummary, TokenPair } from '@famifinances/contracts';
+import { AUTH_THROTTLE } from '../config/security';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -18,12 +20,21 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './types/authenticated-user';
 
+/**
+ * SEC-01 · stricter per-IP rate limit for credential endpoints (FR-004), overriding
+ * the global throttler on these routes and layered on the per-account sign-in lockout.
+ */
+const CREDENTIAL_THROTTLE = {
+  default: { limit: AUTH_THROTTLE.limit, ttl: AUTH_THROTTLE.ttlMs },
+};
+
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
+  @Throttle(CREDENTIAL_THROTTLE)
   @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({ description: 'Account created (email unverified).' })
   async register(@Body() dto: RegisterDto): Promise<AccountSummary> {
@@ -31,6 +42,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle(CREDENTIAL_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Authenticated; returns an access + refresh token pair.' })
   async login(@Body() dto: LoginDto): Promise<TokenPair> {
@@ -54,6 +66,7 @@ export class AuthController {
   }
 
   @Post('email/verify')
+  @Throttle(CREDENTIAL_THROTTLE)
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
@@ -66,6 +79,7 @@ export class AuthController {
   }
 
   @Post('email/verify/resend')
+  @Throttle(CREDENTIAL_THROTTLE)
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiBearerAuth()
@@ -74,6 +88,7 @@ export class AuthController {
   }
 
   @Post('password/reset/request')
+  @Throttle(CREDENTIAL_THROTTLE)
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiAcceptedResponse({
     description: 'Uniform response whether or not the email is registered (no enumeration).',
@@ -83,6 +98,7 @@ export class AuthController {
   }
 
   @Post('password/reset/confirm')
+  @Throttle(CREDENTIAL_THROTTLE)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({
     description: 'Password updated; all sessions revoked and email marked verified.',

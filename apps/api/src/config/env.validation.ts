@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import { IsInt, IsNotEmpty, IsOptional, IsString, Min, validateSync } from 'class-validator';
 
 /**
@@ -34,6 +34,29 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   MAIL_PROVIDER_API_KEY?: string;
+
+  // SEC-01 · security edge configuration (secure defaults; externally tunable, FR-010).
+  // Comma-separated CORS origin allowlist; empty = deny all cross-origin browser access.
+  @IsOptional()
+  @IsString()
+  CORS_ALLOWED_ORIGINS = '';
+
+  // Max JSON request body size (bytes / `kb` / `mb` suffix); oversized → 413.
+  @IsString()
+  @IsNotEmpty()
+  REQUEST_BODY_LIMIT = '100kb';
+
+  // Stricter per-IP rate limit for credential endpoints, on top of the global baseline.
+  // @Type coerces the env string to a number before @IsInt (env values arrive as strings).
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  AUTH_RATE_LIMIT = 5;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1000)
+  AUTH_RATE_TTL_MS = 60000;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

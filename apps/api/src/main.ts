@@ -1,24 +1,19 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { UniformErrorFilter } from './common/filters/uniform-error.filter';
-import { LoggingInterceptor } from './common/logging/logging.interceptor';
+import { configureApp } from './app.setup';
+import { BODY_LIMIT } from './config/security';
 
 export async function createApp() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // Disable Nest's default body parser so we can apply the configurable size limit
+  // (SEC-01 FR-003): an oversized JSON body is rejected with 413 before the handler.
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, bodyParser: false });
+  app.use(json({ limit: BODY_LIMIT }));
+  app.use(urlencoded({ extended: true, limit: BODY_LIMIT }));
 
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-
-  // Server-side validation for every request (FR-017): reject unknown fields.
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-  );
-  app.useGlobalFilters(new UniformErrorFilter());
-  app.useGlobalInterceptors(new LoggingInterceptor());
-
+  configureApp(app);
   return app;
 }
 
