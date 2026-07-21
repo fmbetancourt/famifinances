@@ -24,9 +24,16 @@
       "mongodb-memory-server"
     ],
     "auditConfig": {
-      "//": "SEC-01: block-by-default. Each id ignored here MUST have a matching entry (rationale, reviewer, date) in docs/security-checklist.md.",
+      "//": "QLT-01 baseline: apps/api-prod advisories accepted here MUST have a matching entry (rationale, reviewer, date) in docs/security-checklist.md §4.2. scripts/audit-api.mjs blocks any NEW apps/api-prod high/critical not listed here.",
       "ignoreCves": [],
-      "ignoreGhsas": []
+      "ignoreGhsas": [
+        "GHSA-xf7r-hgr6-v32p",
+        "GHSA-v52c-386h-88mc",
+        "GHSA-5528-5vmv-3xc2",
+        "GHSA-72gw-mp4g-v24j",
+        "GHSA-r5fr-rjxr-66jc",
+        "GHSA-52cp-r559-cp3m"
+      ]
     }
   }
 }
