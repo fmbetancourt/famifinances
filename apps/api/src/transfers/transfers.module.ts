@@ -30,7 +30,8 @@ import { TransfersController } from './transfers.controller';
     TransferBalanceService,
     TransferSummaryService,
   ],
-  // TransferBalanceService → ACC-01 derived balance; TransferSummaryService → DASH-01 last-updated.
-  exports: [TransferBalanceService, TransferSummaryService],
+  // TransferBalanceService → ACC-01 derived balance; TransferSummaryService → DASH-01 last-updated;
+  // TransferRepository → EXP-01 reads the family's transfers for the CSV export.
+  exports: [TransferBalanceService, TransferSummaryService, TransferRepository],
 })
 export class TransfersModule {}
