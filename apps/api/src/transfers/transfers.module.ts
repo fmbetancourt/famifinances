@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { FamiliesModule } from '../families/families.module';
 import { FinancialAccountsModule } from '../financial-accounts/financial-accounts.module';
+import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { Transfer, TransferSchema } from './transfer.schema';
 import { TransferEvent, TransferEventSchema } from './transfer-event.schema';
 import { TransferRepository } from './transfer.repository';
@@ -18,6 +19,7 @@ import { TransfersController } from './transfers.controller';
       { name: TransferEvent.name, schema: TransferEventSchema },
     ]),
     FamiliesModule, // FamilyScopeGuard (Principle I)
+    IdempotencyModule, // OFF-01 · idempotent create (retry-safe offline capture)
     // FinancialAccountRepository — validate the referenced accounts; forwardRef breaks the
     // accounts⇄transfers cycle (accounts pull transfer sums for the derived balance).
     forwardRef(() => FinancialAccountsModule),

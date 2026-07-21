@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { Types } from 'mongoose';
 import type { TransferSummary } from '@famifinances/contracts';
 import { FinancialAccountRepository } from '../financial-accounts/financial-account.repository';
+import { IdempotencyService, IdempotencyRunResult } from '../idempotency/idempotency.service';
+import { fingerprint } from '../idempotency/fingerprint';
 import { TransferRepository, UpdateTransferPatch } from './transfer.repository';
 import { TransferEventRepository } from './transfer-event.repository';
 import { TransferDocument } from './transfer.schema';
@@ -18,10 +20,42 @@ export class TransfersService {
     private readonly transfers: TransferRepository,
     private readonly events: TransferEventRepository,
     private readonly accounts: FinancialAccountRepository,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
-  /** US1 · Record a transfer between two active family accounts (FR-001..FR-006). */
+  /**
+   * US1 · Record a transfer between two active family accounts (FR-001..FR-006). OFF-01:
+   * an optional `idempotencyKey` makes the create retry-safe — a replay returns the same
+   * transfer without moving balances twice.
+   */
   async createTransfer(
+    familyId: string,
+    createdBy: string,
+    dto: CreateTransferDto,
+    idempotencyKey?: string,
+  ): Promise<IdempotencyRunResult<TransferSummary>> {
+    return this.idempotency.run<TransferSummary>({
+      key: idempotencyKey,
+      familyId,
+      ownerId: createdBy,
+      operation: 'transfer.create',
+      fingerprint: fingerprint({
+        amount: dto.amount,
+        date: dto.date,
+        fromAccountId: dto.fromAccountId,
+        toAccountId: dto.toAccountId,
+        note: dto.note ?? null,
+      }),
+      create: async () => {
+        const summary = await this.persistTransfer(familyId, createdBy, dto);
+        return { id: summary.transferId, result: summary };
+      },
+      reload: (id) => this.getTransfer(familyId, id),
+    });
+  }
+
+  /** The actual transfer create (validations + persistence + audit). */
+  private async persistTransfer(
     familyId: string,
     createdBy: string,
     dto: CreateTransferDto,
