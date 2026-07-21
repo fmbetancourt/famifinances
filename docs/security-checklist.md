@@ -38,19 +38,27 @@ uniform (no enumeration). Revisit if abuse is observed.
 
 ### 4.2 · Dependency advisories
 
-The CI "Dependency audit" step runs `pnpm audit --audit-level=high` on every build and **reports** advisories;
-it is currently **non-blocking** because the monorepo tree carries pre-existing high advisories from the
-**Expo/React-Native mobile app (not deployed)** and **build tooling** (`@nestjs/cli` → glob/tmp/picomatch),
-plus a few unused API transitives (`multer` via platform-express, `lodash` via `@nestjs/config`). None of these
-are on the **deployed API request path**.
+QLT-01 replaced the report-only audit with `node scripts/audit-api.mjs` (CI, **blocking**): it fails the build
+on any high/critical advisory in the **`apps/api` production dependency set** (the deployed server), while
+mobile-app and `devDependency` advisories are **reported but non-blocking**. A NEW `apps/api`-prod advisory not
+listed below fails CI.
 
-**Pre-pilot review (required)**: review the latest audit output and confirm no high/critical advisory affects a
-**runtime API code path**. Record the review below. When the deployed API surface is advisory-free, flip the CI
-step to blocking (remove `continue-on-error`) — tracked in the QLT track.
+**Accepted `apps/api`-prod advisories** (baselined in `package.json` `pnpm.auditConfig.ignoreGhsas`). All are
+**transitive** via `@nestjs/*` with no upstream fix and **not on the deployed request path** (no file uploads →
+`multer` unused; `lodash`/`js-yaml` are transitive utilities). Re-review each release and drop from the list
+when an upstream fix lands.
 
-| CVE / GHSA id | Package | On API runtime path? | Rationale / disposition | Reviewer | Review date |
-|---------------|---------|----------------------|-------------------------|----------|-------------|
-| _(review latest `pnpm audit` output before pilot)_ | — | — | — | — | — |
+| GHSA id | Package | Via | On request path? | Rationale | Reviewer | Review date |
+|---------|---------|-----|------------------|-----------|----------|-------------|
+| GHSA-xf7r-hgr6-v32p | multer | @nestjs/platform-express | No (no uploads) | transitive, no upstream fix | _pending_ | 2026-07-20 |
+| GHSA-v52c-386h-88mc | multer | @nestjs/platform-express | No (no uploads) | transitive, no upstream fix | _pending_ | 2026-07-20 |
+| GHSA-5528-5vmv-3xc2 | multer | @nestjs/platform-express | No (no uploads) | transitive, no upstream fix | _pending_ | 2026-07-20 |
+| GHSA-72gw-mp4g-v24j | multer | @nestjs/platform-express | No (no uploads) | transitive, no upstream fix | _pending_ | 2026-07-20 |
+| GHSA-r5fr-rjxr-66jc | lodash | @nestjs/config | No | transitive utility | _pending_ | 2026-07-20 |
+| GHSA-52cp-r559-cp3m | js-yaml | @nestjs/* | No | transitive utility | _pending_ | 2026-07-20 |
+
+**Pre-pilot review (required)**: confirm the accepted list above is still justified and that `audit-api.mjs`
+passes (no unaccepted `apps/api`-prod advisory).
 
 ## Sign-off
 

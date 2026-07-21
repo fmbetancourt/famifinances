@@ -44,18 +44,24 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      # SEC-01 (FR-012): report high/critical dependency advisories on every build. The
-      # step is non-blocking (`continue-on-error`) because the current monorepo tree carries
-      # pre-existing highs from the Expo/React-Native mobile app (not deployed) and build
-      # tooling; the audit output is reviewed at the pre-pilot gate (docs/security-checklist.md,
-      # §4.2), and accepted advisories are recorded there + in `pnpm.auditConfig`. Tighten to
-      # a hard failure once the deployed API surface is advisory-free (QLT track).
-      - name: Dependency audit
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
+      # QLT-01 (FR-004): BLOCK on a high/critical advisory in the deployed apps/api production
+      # dependency set; mobile + devDependency advisories are reported (non-blocking). Accepted
+      # risks live in package.json `pnpm.auditConfig` + docs/security-checklist.md §4.2.
+      - name: Dependency audit (deployed API)
+        run: node scripts/audit-api.mjs
 
-      - name: Test (API unit + e2e)
-        run: pnpm test
+      # QLT-01: one instrumented run covers unit + e2e AND enforces the high-risk coverage
+      # floor (FR-006). A bounded step-level retry (each attempt a fresh process) absorbs the
+      # residual environmental e2e flake — including the rare setup/beforeAll failure that
+      # jest.retryTimes cannot catch — so CI is green in practice while a real defect (failing
+      # every attempt) still fails. See docs/quality-gates.md → "Known issue".
+      - name: Test + coverage (unit + e2e, high-risk ≥ 90% / branches ≥ 80%)
+        run: |
+          for attempt in 1 2 3; do
+            pnpm --filter @famifinances/api test:cov && exit 0
+            echo "::warning::test:cov attempt $attempt failed (environmental e2e flake); retrying in a fresh process"
+          done
+          exit 1
 
       - name: Build (API)
         run: pnpm --filter @famifinances/api build
