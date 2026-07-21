@@ -271,6 +271,28 @@ export class MovementRepository {
   }
 
   /**
+   * The member's most recent non-deleted movement (UX-01 capture defaults). Scoped
+   * to the family + the member's `createdBy`, newest by occurrence then creation.
+   * Null when the member has recorded none. Read-only; adds no write coupling.
+   */
+  async findLatestByMember(
+    familyId: string,
+    memberId: string,
+  ): Promise<MovementDocument | null> {
+    if (!Types.ObjectId.isValid(memberId)) {
+      return null;
+    }
+    return this.model
+      .findOne({
+        familyId: new Types.ObjectId(familyId),
+        createdBy: new Types.ObjectId(memberId),
+        deletedAt: null,
+      })
+      .sort({ date: -1, createdAt: -1 })
+      .exec();
+  }
+
+  /**
    * The most recent change time across the family's movements (create/edit/soft-delete
    * all bump `updatedAt`), regardless of deletion — a deletion is a change worth
    * reflecting. Null when the family has no movements. Powers DASH-01's "last updated".

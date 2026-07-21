@@ -81,6 +81,22 @@ export class FinancialAccountRepository {
       .exec();
   }
 
+  /** The family's accounts among the given ids, in one query (UX-01 availability resolve). */
+  async findManyInFamily(
+    familyId: string,
+    accountIds: string[],
+  ): Promise<FinancialAccountDocument[]> {
+    const ids = accountIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.model
+      .find({ _id: { $in: ids }, familyId: new Types.ObjectId(familyId) })
+      .exec();
+  }
+
   async updateInFamily(
     familyId: string,
     accountId: string,

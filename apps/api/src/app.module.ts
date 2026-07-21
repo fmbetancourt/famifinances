@@ -15,6 +15,7 @@ import { TransfersModule } from './transfers/transfers.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HistoryModule } from './history/history.module';
+import { CaptureModule } from './capture/capture.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { MailModule } from './mail/mail.module';
     BudgetsModule,
     DashboardModule,
     HistoryModule,
+    CaptureModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

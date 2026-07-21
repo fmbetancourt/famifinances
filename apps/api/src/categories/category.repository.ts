@@ -69,6 +69,22 @@ export class CategoryRepository {
       .exec();
   }
 
+  /** System defaults + the family's custom categories among the given ids, in one query (UX-01). */
+  async findManyVisible(familyId: string, categoryIds: string[]): Promise<CategoryDocument[]> {
+    const ids = categoryIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.model
+      .find({
+        _id: { $in: ids },
+        $or: [{ scope: 'system' }, { scope: 'family', familyId: new Types.ObjectId(familyId) }],
+      })
+      .exec();
+  }
+
   async createCustom(input: CreateCustomCategoryInput): Promise<CategoryDocument> {
     return this.model.create({
       scope: 'family',

@@ -1,0 +1,320 @@
+openapi: 3.0.3
+info:
+  title: FamiFinances · Capture Templates & Defaults (UX-01)
+  version: 1.0.0
+  description: >
+    Backend surface that operationalizes Principle VII: per-member capture defaults
+    (last-used account/category/type, derived on read) and family-shared movement
+    templates (frequent presets). Applying a template is client-side pre-fill over
+    TXN-01; there is no `apply` endpoint. All paths are family-scoped from the session.
+servers:
+  - url: /v1
+tags:
+  - name: capture
+    description: Capture defaults and movement templates.
+
+paths:
+  /capture-defaults:
+    get:
+      tags: [capture]
+      summary: Capture defaults for the authenticated member (derived on read)
+      operationId: getCaptureDefaults
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The member's last-used values plus today's date; fields are null when unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureDefaults'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+
+  /capture-templates:
+    get:
+      tags: [capture]
+      summary: List the family's movement templates
+      operationId: listMovementTemplates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The family's templates with per-row reference-availability flags.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MovementTemplateSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+    post:
+      tags: [capture]
+      summary: Create a movement template (any family member; verified email)
+      operationId: createMovementTemplate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: The created template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovementTemplateSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+        '409':
+          $ref: '#/components/responses/DuplicateName'
+
+  /capture-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/TemplateId'
+    get:
+      tags: [capture]
+      summary: Get one movement template of the family
+      operationId: getMovementTemplate
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovementTemplateSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [capture]
+      summary: Update a movement template (any family member; verified email)
+      operationId: updateMovementTemplate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateRequest'
+      responses:
+        '200':
+          description: The updated template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovementTemplateSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/DuplicateName'
+    delete:
+      tags: [capture]
+      summary: Delete a movement template (any family member; verified email)
+      operationId: deleteMovementTemplate
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Deleted (no content).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The template id (family-scoped; foreign/malformed → 404).
+
+  schemas:
+    MovementType:
+      type: string
+      enum: [income, expense]
+
+    CaptureDefaults:
+      type: object
+      required: [type, accountId, categoryId, date]
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/MovementType'
+          nullable: true
+          description: Last-used movement type, or null when the member has no prior movement.
+        accountId:
+          type: string
+          nullable: true
+          description: Last-used account id, or null when none or the account is archived/missing.
+        categoryId:
+          type: string
+          nullable: true
+          description: Last-used category id, or null when none/uncategorized/archived/kind-mismatch.
+        date:
+          type: string
+          format: date
+          description: Always today (server clock), YYYY-MM-DD.
+
+    CreateTemplateRequest:
+      type: object
+      required: [name, type, accountId, categoryId]
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          description: Non-blank; unique within the family (case-insensitive).
+        type:
+          $ref: '#/components/schemas/MovementType'
+        accountId:
+          type: string
+          description: An active account of the family.
+        categoryId:
+          type: string
+          description: A visible active category whose kind equals `type`.
+        amount:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Optional suggested amount; positive whole-peso CLP when present.
+        note:
+          type: string
+          nullable: true
+          maxLength: 280
+
+    UpdateTemplateRequest:
+      type: object
+      description: At least one field; same validation as create for provided fields.
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        type:
+          $ref: '#/components/schemas/MovementType'
+        accountId:
+          type: string
+        categoryId:
+          type: string
+        amount:
+          type: integer
+          nullable: true
+          minimum: 1
+        note:
+          type: string
+          nullable: true
+          maxLength: 280
+
+    MovementTemplateSummary:
+      type: object
+      required:
+        [templateId, name, type, accountId, categoryId, amount, note, accountAvailable, categoryAvailable]
+      properties:
+        templateId:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MovementType'
+        accountId:
+          type: string
+        categoryId:
+          type: string
+        amount:
+          type: integer
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        accountAvailable:
+          type: boolean
+          description: False when the referenced account is archived/missing (needs reselection).
+        categoryAvailable:
+          type: boolean
+          description: False when the referenced category is archived/missing or kind≠type.
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Validation failed (bad reference, kind≠type, blank name, non-positive amount).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing/invalid access token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Email not verified (writes require a verified email).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoFamily:
+      description: The caller has no family in session.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: No such template in the caller's family.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    DuplicateName:
+      description: A template with the same name already exists in the family.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
