@@ -16,6 +16,7 @@ import { BudgetsModule } from './budgets/budgets.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HistoryModule } from './history/history.module';
 import { CaptureModule } from './capture/capture.module';
+import { RemindersModule } from './reminders/reminders.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -37,6 +38,7 @@ import { MailModule } from './mail/mail.module';
     DashboardModule,
     HistoryModule,
     CaptureModule,
+    RemindersModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
