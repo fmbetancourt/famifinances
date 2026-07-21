@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Account, AccountDocument } from './account.schema';
 import { LOGIN_LOCKOUT } from '../config/security';
 
@@ -49,6 +49,26 @@ export class AccountRepository {
 
   async findById(id: string): Promise<AccountDocument | null> {
     return this.model.findById(id).exec();
+  }
+
+  /**
+   * EXP-01 · maps the given account ids to their emails in one query (author
+   * resolution for the CSV export). NOTE: this method is intentionally **not**
+   * family-scoped — callers MUST pass only `createdBy` ids derived from their own
+   * family's rows (the export service does). Isolation rests on that id-set, and the
+   * cross-family export e2e proves no foreign email can appear.
+   */
+  async findEmailsByIds(ids: string[]): Promise<Map<string, string>> {
+    const objectIds = ids.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
+    if (objectIds.length === 0) {
+      return new Map();
+    }
+    const docs = await this.model
+      .find({ _id: { $in: objectIds } })
+      .select('email')
+      .lean<{ _id: Types.ObjectId; email: string }[]>()
+      .exec();
+    return new Map(docs.map((doc) => [doc._id.toString(), doc.email]));
   }
 
   /**

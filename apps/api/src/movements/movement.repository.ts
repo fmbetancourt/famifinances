@@ -225,11 +225,16 @@ export class MovementRepository {
    * account or category ids short-circuit to an empty result (never a cross-family read).
    * A blank note `search` is ignored so note-less movements are not excluded.
    */
-  async searchHistory(
+  /**
+   * Builds the family-scoped, non-deleted filter for the HIS-01 filter set. Returns
+   * `null` when a provided account/category id is malformed — the caller treats that
+   * as "no matches" (a bad/foreign id can never widen access). Shared by
+   * `searchHistory` (HIS-01) and `findForExport` (EXP-01) so the two never diverge.
+   */
+  private buildHistoryFilter(
     familyId: string,
     filters: MovementHistoryFilters,
-    page: { limit: number; offset: number },
-  ): Promise<MovementHistoryResult> {
+  ): FilterQuery<MovementDocument> | null {
     const query: FilterQuery<MovementDocument> = {
       familyId: new Types.ObjectId(familyId),
       deletedAt: null,
@@ -248,13 +253,13 @@ export class MovementRepository {
     }
     if (filters.account) {
       if (!Types.ObjectId.isValid(filters.account)) {
-        return { items: [], total: 0 };
+        return null;
       }
       query.accountId = new Types.ObjectId(filters.account);
     }
     if (filters.category) {
       if (!Types.ObjectId.isValid(filters.category)) {
-        return { items: [], total: 0 };
+        return null;
       }
       query.categoryId = new Types.ObjectId(filters.category);
     }
@@ -262,12 +267,40 @@ export class MovementRepository {
     if (search) {
       query.note = { $regex: escapeRegex(search), $options: 'i' };
     }
+    return query;
+  }
+
+  async searchHistory(
+    familyId: string,
+    filters: MovementHistoryFilters,
+    page: { limit: number; offset: number },
+  ): Promise<MovementHistoryResult> {
+    const query = this.buildHistoryFilter(familyId, filters);
+    if (query === null) {
+      return { items: [], total: 0 };
+    }
 
     const [items, total] = await Promise.all([
       this.model.find(query).sort({ date: -1, createdAt: -1 }).skip(page.offset).limit(page.limit).exec(),
       this.model.countDocuments(query).exec(),
     ]);
     return { items, total };
+  }
+
+  /**
+   * EXP-01 · all the family's non-deleted movements matching the HIS-01 filters, newest
+   * first, **unpaginated** (an export is the whole matching set). A malformed account/
+   * category id yields an empty result (header-only file).
+   */
+  async findForExport(
+    familyId: string,
+    filters: MovementHistoryFilters,
+  ): Promise<MovementDocument[]> {
+    const query = this.buildHistoryFilter(familyId, filters);
+    if (query === null) {
+      return [];
+    }
+    return this.model.find(query).sort({ date: -1, createdAt: -1 }).exec();
   }
 
   /**

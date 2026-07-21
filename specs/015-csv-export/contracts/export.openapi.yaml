@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: FamiFinances · CSV Export (EXP-01)
+  version: 1.0.0
+  description: >
+    Backend surface for basic data portability. Two authenticated, family-scoped
+    endpoints stream the family's movements and transfers as downloadable CSV files
+    (UTF-8 with BOM, comma-delimited, RFC-4180). Export-only; import is out of scope.
+    Any family member may export (a read of shared data).
+servers:
+  - url: /v1
+tags:
+  - name: export
+    description: CSV data export.
+
+paths:
+  /export/movements:
+    get:
+      tags: [export]
+      summary: Export the family's movements as CSV
+      operationId: exportMovements
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date }, description: Inclusive start date (YYYY-MM-DD). }
+        - { name: to, in: query, required: false, schema: { type: string, format: date }, description: Inclusive end date (YYYY-MM-DD). }
+        - { name: type, in: query, required: false, schema: { type: string, enum: [income, expense] } }
+        - { name: account, in: query, required: false, schema: { type: string }, description: Account id filter. }
+        - { name: category, in: query, required: false, schema: { type: string }, description: Category id filter. }
+        - { name: search, in: query, required: false, schema: { type: string, maxLength: 100 }, description: Note substring (blank ignored). }
+      responses:
+        '200':
+          description: >
+            A CSV file with header `Fecha,Tipo,Monto,Cuenta,Categoría,Nota,Autor,Creado`
+            and one row per non-deleted movement matching the filters (header-only when none).
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="movimientos-YYYY-MM-DD.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+
+  /export/transfers:
+    get:
+      tags: [export]
+      summary: Export the family's transfers as CSV
+      operationId: exportTransfers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: >
+            A CSV file with header `Fecha,Cuenta origen,Cuenta destino,Monto,Autor,Creado`
+            and one row per non-deleted transfer (header-only when none).
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="transferencias-YYYY-MM-DD.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        error: { type: string }
+
+  responses:
+    BadRequest:
+      description: A filter value is malformed (e.g. an invalid date).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing/invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoFamily:
+      description: The caller has no family in session.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
