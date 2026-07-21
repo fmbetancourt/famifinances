@@ -8,3 +8,4 @@ export * from './budget/index';
 export * from './dashboard/index';
 export * from './history/index';
 export * from './capture/index';
+export * from './reminder/index';

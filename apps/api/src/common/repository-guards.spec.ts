@@ -9,6 +9,10 @@ import { CategoryRepository } from '../categories/category.repository';
 import { CategoryDocument } from '../categories/category.schema';
 import { FinancialAccountRepository } from '../financial-accounts/financial-account.repository';
 import { FinancialAccountDocument } from '../financial-accounts/financial-account.schema';
+import { MovementTemplateRepository } from '../capture/movement-template.repository';
+import { MovementTemplateDocument } from '../capture/movement-template.schema';
+import { ReminderRepository } from '../reminders/reminder.repository';
+import { ReminderDocument } from '../reminders/reminder.schema';
 
 /**
  * QLT-01 · the family-scoped repositories reject a malformed entity id BEFORE touching the
@@ -55,5 +59,20 @@ describe('Repository malformed-id guards (QLT-01, Principle I)', () => {
     expect(await repo.findInFamily(FAM, BAD)).toBeNull();
     expect(await repo.updateInFamily(FAM, BAD, { name: 'x' })).toBeNull();
     expect(await repo.setArchived(FAM, BAD, null)).toBeNull();
+  });
+
+  it('MovementTemplateRepository returns null/false for a malformed id', async () => {
+    const repo = new MovementTemplateRepository(noModel<MovementTemplateDocument>());
+    expect(await repo.findInFamily(FAM, BAD)).toBeNull();
+    expect(await repo.update(FAM, BAD, { name: 'x' })).toBeNull();
+    expect(await repo.deleteInFamily(FAM, BAD)).toBe(false);
+  });
+
+  it('ReminderRepository returns null/false for a malformed id', async () => {
+    const OWNER = 'owner-1';
+    const repo = new ReminderRepository(noModel<ReminderDocument>());
+    expect(await repo.findForOwner(OWNER, FAM, BAD)).toBeNull();
+    expect(await repo.update(OWNER, FAM, BAD, { enabled: false })).toBeNull();
+    expect(await repo.deleteForOwner(OWNER, FAM, BAD)).toBe(false);
   });
 });

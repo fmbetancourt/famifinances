@@ -1,0 +1,287 @@
+openapi: 3.0.3
+info:
+  title: FamiFinances · Local Reminders (NTF-01)
+  version: 1.0.0
+  description: >
+    Backend surface for personal, per-member reminder configuration. The mobile app
+    reads these and schedules on-device local notifications; the server sends no push
+    and runs no scheduler. All paths are scoped to the authenticated member.
+servers:
+  - url: /v1
+tags:
+  - name: reminders
+    description: Personal reminder configuration.
+
+paths:
+  /reminders:
+    get:
+      tags: [reminders]
+      summary: List the caller's reminders
+      operationId: listReminders
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The member's reminders, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReminderSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+    post:
+      tags: [reminders]
+      summary: Create a reminder (verified email)
+      operationId: createReminder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReminderRequest'
+      responses:
+        '201':
+          description: The created reminder.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReminderSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NoFamily'
+        '409':
+          $ref: '#/components/responses/LimitReached'
+
+  /reminders/{reminderId}:
+    parameters:
+      - $ref: '#/components/parameters/ReminderId'
+    get:
+      tags: [reminders]
+      summary: Get one of the caller's reminders
+      operationId: getReminder
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The reminder.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReminderSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [reminders]
+      summary: Update a reminder — including enable/disable (verified email)
+      operationId: updateReminder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReminderRequest'
+      responses:
+        '200':
+          description: The updated reminder.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReminderSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [reminders]
+      summary: Delete a reminder (verified email)
+      operationId: deleteReminder
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Deleted (no content).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ReminderId:
+      name: reminderId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The reminder id (owner-scoped; foreign/malformed → 404).
+
+  schemas:
+    ReminderPurpose:
+      type: string
+      enum: [capture, budget, custom]
+    ReminderCadence:
+      type: string
+      enum: [daily, weekly, monthly]
+    ReminderWeekday:
+      type: string
+      enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+
+    CreateReminderRequest:
+      type: object
+      required: [purpose, cadence, timeOfDay]
+      properties:
+        purpose:
+          $ref: '#/components/schemas/ReminderPurpose'
+        cadence:
+          $ref: '#/components/schemas/ReminderCadence'
+        timeOfDay:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: 24h wall-clock HH:MM, interpreted in the device timezone.
+        dayOfWeek:
+          allOf:
+            - $ref: '#/components/schemas/ReminderWeekday'
+          nullable: true
+          description: Required iff cadence=weekly; must be null otherwise.
+        dayOfMonth:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 31
+          description: Required iff cadence=monthly; must be null otherwise. 29–31 clamped to the last day by the device.
+        label:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: Optional for capture/budget; required non-blank for custom.
+
+    UpdateReminderRequest:
+      type: object
+      description: At least one field; the effective reminder is re-validated as a whole.
+      properties:
+        purpose:
+          $ref: '#/components/schemas/ReminderPurpose'
+        cadence:
+          $ref: '#/components/schemas/ReminderCadence'
+        timeOfDay:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        dayOfWeek:
+          allOf:
+            - $ref: '#/components/schemas/ReminderWeekday'
+          nullable: true
+        dayOfMonth:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 31
+        label:
+          type: string
+          nullable: true
+          maxLength: 80
+        enabled:
+          type: boolean
+
+    ReminderSummary:
+      type: object
+      required: [reminderId, purpose, cadence, timeOfDay, dayOfWeek, dayOfMonth, label, enabled]
+      properties:
+        reminderId:
+          type: string
+        purpose:
+          $ref: '#/components/schemas/ReminderPurpose'
+        cadence:
+          $ref: '#/components/schemas/ReminderCadence'
+        timeOfDay:
+          type: string
+        dayOfWeek:
+          allOf:
+            - $ref: '#/components/schemas/ReminderWeekday'
+          nullable: true
+        dayOfMonth:
+          type: integer
+          nullable: true
+        label:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Validation failed (bad time, cadence/selector mismatch, blank custom label).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing/invalid access token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Email not verified (writes require a verified email).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoFamily:
+      description: The caller has no family in session.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: No such reminder for this member.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    LimitReached:
+      description: The member already has the maximum number of reminders (20).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
