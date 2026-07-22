@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ApiError, confirmPasswordReset } from '../../src/features/auth/api/client';
+import {
+  PASSWORD_RULE_LABELS,
+  evaluatePassword,
+} from '../../src/features/auth/session/password-policy';
 
 /**
- * US7 · Reset-password screen. Enters the emailed 6-digit code and a new password.
- * On success all sessions are revoked server-side, so the user signs in fresh.
+ * US3 · Reset-password screen. Enters the emailed 6-digit code and a new password. The
+ * new password is validated against the same complexity policy as sign-up (FR-003), with
+ * real-time feedback. On success all sessions are revoked server-side, so the user signs
+ * in fresh.
  */
-export default function ResetPasswordScreen() {
+export default function ResetPasswordScreen(): JSX.Element {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email ?? '');
@@ -16,7 +22,10 @@ export default function ResetPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function onSubmit() {
+  const evaluation = useMemo(() => evaluatePassword(newPassword), [newPassword]);
+  const canSubmit = evaluation.valid && code.length === 6 && !submitting;
+
+  async function onSubmit(): Promise<void> {
     setError(null);
     setSubmitting(true);
     try {
@@ -62,6 +71,16 @@ export default function ResetPasswordScreen() {
         accessibilityLabel="New password"
       />
 
+      {newPassword.length > 0 && evaluation.missing.length > 0 ? (
+        <View style={styles.rules} accessibilityLabel="Password requirements">
+          {evaluation.missing.map((rule) => (
+            <Text key={rule} style={styles.ruleItem}>
+              • {PASSWORD_RULE_LABELS[rule]}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
       {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           ⚠ {error}
@@ -69,10 +88,11 @@ export default function ResetPasswordScreen() {
       ) : null}
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, canSubmit ? null : styles.buttonDisabled]}
         onPress={onSubmit}
-        disabled={submitting || code.length !== 6}
+        disabled={!canSubmit}
         accessibilityRole="button"
+        accessibilityState={{ disabled: !canSubmit }}
       >
         {submitting ? <ActivityIndicator /> : <Text style={styles.buttonText}>Reset password</Text>}
       </TouchableOpacity>
@@ -85,7 +105,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '600', marginBottom: 8 },
   label: { fontSize: 14, fontWeight: '500' },
   input: { borderWidth: 1, borderColor: '#999', borderRadius: 8, padding: 12, marginBottom: 8 },
+  rules: { marginBottom: 8, gap: 2 },
+  ruleItem: { color: '#8a6d00', fontSize: 13 },
   error: { color: '#b00020', marginVertical: 8 },
   button: { backgroundColor: '#1b5e20', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 8 },
+  buttonDisabled: { backgroundColor: '#9e9e9e' },
   buttonText: { color: '#fff', fontWeight: '600' },
 });

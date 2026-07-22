@@ -3,13 +3,18 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { useRouter } from 'expo-router';
 import { ApiError } from '../../src/features/auth/api/client';
 import { resendVerification, verifyEmail } from '../../src/features/auth/api/verification';
+import { useSession } from '../../src/features/auth/session/session-context';
 
 /**
- * US6 · Email verification screen. A 6-digit code (OTP) is entered in-app. Status
- * is conveyed with text + icon, never color alone (constitution Principle VII).
+ * US2 · Email verification screen. A 6-digit code (OTP) is entered in-app. Status
+ * is conveyed with text + icon, never color alone (constitution Principle VII). On
+ * success the session is reloaded (to pick up the now-verified identity) and routing
+ * is delegated to the launch redirect, which sends the user to the app or onboarding
+ * depending on family membership (FR-007).
  */
-export default function VerifyEmailScreen() {
+export default function VerifyEmailScreen(): JSX.Element {
   const router = useRouter();
+  const { reload } = useSession();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -21,6 +26,7 @@ export default function VerifyEmailScreen() {
     setSubmitting(true);
     try {
       await verifyEmail(code);
+      await reload();
       router.replace('/');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not verify the code.');

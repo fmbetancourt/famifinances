@@ -2,34 +2,41 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ApiError, login } from '../../src/features/auth/api/client';
-import { saveTokens } from '../../src/features/auth/storage/secure-token-store';
+import { useSession } from '../../src/features/auth/session/session-context';
+import type { SessionReason } from '../../src/features/auth/session/session-bootstrap';
 
 /**
- * US2 · Sign-in screen. One primary action; failures are shown with text (not
- * color alone) per constitution Principle VII. The API returns a uniform error
- * for wrong/unknown credentials, so the message never reveals which factor failed.
+ * US1 · Sign-in screen. One primary action; failures are shown with text (not color
+ * alone) per constitution Principle VII. On success the token pair is handed to the
+ * session (which persists it and resolves identity + family), then routing is delegated
+ * to the launch redirect. Invalid credentials collapse to a single uniform message that
+ * does not reveal which factor failed (FR-011); throttling shows a friendly notice (FR-010).
  */
-export default function SignInScreen() {
+export default function SignInScreen(): JSX.Element {
   const router = useRouter();
+  const { establishSession, reason } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function onSubmit() {
+  async function onSubmit(): Promise<void> {
     setError(null);
     setSubmitting(true);
     try {
       const tokens = await login({ email, password });
-      await saveTokens(tokens);
+      await establishSession(tokens);
       router.replace('/');
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Could not sign in.';
-      setError(message);
+      setError(messageFor(err));
     } finally {
       setSubmitting(false);
     }
   }
+
+  // A live form error takes precedence; otherwise surface why a prior session ended
+  // (spec Edge Cases: expired/revoked session, or an offline restore).
+  const notice = error ?? sessionNotice(reason);
 
   return (
     <View style={styles.container}>
@@ -54,9 +61,9 @@ export default function SignInScreen() {
         accessibilityLabel="Password"
       />
 
-      {error ? (
+      {notice ? (
         <Text style={styles.error} accessibilityRole="alert">
-          ⚠ {error}
+          ⚠ {notice}
         </Text>
       ) : null}
 
@@ -70,6 +77,34 @@ export default function SignInScreen() {
       </TouchableOpacity>
     </View>
   );
+}
+
+/**
+ * Maps an error to a user-facing message. A 401 collapses to a single non-enumerating
+ * message (FR-011); a 429 is presented as a friendly throttle notice (FR-010).
+ */
+/** Arrival notice derived from why the previous session ended (spec Edge Cases). */
+function sessionNotice(reason: SessionReason): string | null {
+  if (reason === 'expired') {
+    return 'Your session has expired. Please sign in again.';
+  }
+  if (reason === 'offline') {
+    return 'You appear to be offline. Check your connection and try again.';
+  }
+  return null;
+}
+
+function messageFor(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 429) {
+      return 'Too many attempts. Please wait a moment and try again.';
+    }
+    if (err.status === 401) {
+      return 'Invalid email or password.';
+    }
+    return err.message;
+  }
+  return 'Could not sign in.';
 }
 
 const styles = StyleSheet.create({
