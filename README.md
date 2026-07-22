@@ -12,7 +12,7 @@ for the project principles.
 
 ## Prerequisites
 
-- Node.js 20 LTS
+- Node.js v24.18.0
 - pnpm 10 (`corepack enable`)
 - Docker (optional, for the containerized API)
 

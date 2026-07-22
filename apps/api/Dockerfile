@@ -1,5 +1,5 @@
 # Multi-stage build for the FamiFinances API (modular monolith).
-FROM node:20-alpine AS base
+FROM node:24.18.0-alpine AS base
 RUN corepack enable
 WORKDIR /repo
 

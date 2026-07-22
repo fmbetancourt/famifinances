@@ -17,10 +17,10 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Set up Node 20
+      - name: Set up Node 24.18.0
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '24.18.0'
           cache: pnpm
 
       # mongodb-memory-server downloads a mongod binary on install; cache it.

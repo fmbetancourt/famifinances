@@ -10,7 +10,7 @@ the lint gate, mobile tooling, native-dependency handling in CI, and merge block
 ## R1 · CI provider and workflow shape
 
 - **Decision**: **GitHub Actions**, one workflow `.github/workflows/ci.yml`, triggered on
-  `pull_request` (targeting `main`) and `push` to `main`. Jobs run on `ubuntu-latest` with Node 20 and
+  `pull_request` (targeting `main`) and `push` to `main`. Jobs run on `ubuntu-latest` with Node 24.18.0 and
   pnpm via `pnpm/action-setup` + `actions/setup-node` (cache: `pnpm`).
 - **Gate sequence** (single job to reuse one install, or a small matrix):
   1. `pnpm install --frozen-lockfile` (reproducible; runs approved build scripts)
