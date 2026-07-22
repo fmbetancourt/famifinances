@@ -3,6 +3,8 @@ import { Types } from 'mongoose';
 import type { MovementSummary, MovementType } from '@famifinances/contracts';
 import { FinancialAccountRepository } from '../financial-accounts/financial-account.repository';
 import { CategoryRepository } from '../categories/category.repository';
+import { IdempotencyService, IdempotencyRunResult } from '../idempotency/idempotency.service';
+import { fingerprint } from '../idempotency/fingerprint';
 import { MovementRepository, UpdateMovementPatch } from './movement.repository';
 import { MovementEventRepository } from './movement-event.repository';
 import { MovementDocument } from './movement.schema';
@@ -20,10 +22,43 @@ export class MovementsService {
     private readonly events: MovementEventRepository,
     private readonly accounts: FinancialAccountRepository,
     private readonly categories: CategoryRepository,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
-  /** US1 · Record an income/expense movement (FR-001..FR-006). */
+  /**
+   * US1 · Record an income/expense movement (FR-001..FR-006). OFF-01: an optional
+   * `idempotencyKey` makes the create retry-safe — a replay returns the same movement
+   * without duplicating it.
+   */
   async createMovement(
+    familyId: string,
+    createdBy: string,
+    dto: CreateMovementDto,
+    idempotencyKey?: string,
+  ): Promise<IdempotencyRunResult<MovementSummary>> {
+    return this.idempotency.run<MovementSummary>({
+      key: idempotencyKey,
+      familyId,
+      ownerId: createdBy,
+      operation: 'movement.create',
+      fingerprint: fingerprint({
+        type: dto.type,
+        amount: dto.amount,
+        date: dto.date,
+        accountId: dto.accountId,
+        categoryId: dto.categoryId ?? null,
+        note: dto.note ?? null,
+      }),
+      create: async () => {
+        const summary = await this.persistMovement(familyId, createdBy, dto);
+        return { id: summary.movementId, result: summary };
+      },
+      reload: (id) => this.getMovement(familyId, id),
+    });
+  }
+
+  /** The actual movement create (validations + persistence + audit). */
+  private async persistMovement(
     familyId: string,
     createdBy: string,
     dto: CreateMovementDto,

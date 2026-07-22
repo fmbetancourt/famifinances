@@ -3,15 +3,18 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import type { MovementSummary } from '@famifinances/contracts';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
@@ -36,12 +39,28 @@ export class MovementsController {
   @Post()
   @UseGuards(JwtAuthGuard, FamilyScopeGuard, EmailVerifiedGuard)
   @HttpCode(HttpStatus.CREATED)
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'OFF-01 · client-supplied key; a replay returns the original movement (no duplicate).',
+  })
   async create(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentFamily() family: CurrentFamilyContext,
     @Body() dto: CreateMovementDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<MovementSummary> {
-    return this.movements.createMovement(family.familyId, user.accountId, dto);
+    const { result, replayed } = await this.movements.createMovement(
+      family.familyId,
+      user.accountId,
+      dto,
+      idempotencyKey,
+    );
+    if (replayed) {
+      res.setHeader('Idempotent-Replayed', 'true');
+    }
+    return result;
   }
 
   @Get()

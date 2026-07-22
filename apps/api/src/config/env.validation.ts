@@ -57,6 +57,12 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(1000)
   AUTH_RATE_TTL_MS = 60000;
+
+  // OFF-01 · retention window (days) for idempotency records before automatic TTL purge.
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  IDEMPOTENCY_TTL_DAYS = 7;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
