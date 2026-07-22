@@ -63,5 +63,10 @@ jobs:
           done
           exit 1
 
+      # SC-005: mobile unit tests (SessionContext, password policy, token interceptor)
+      # must pass in CI. jsdom/node-only suite — no device or emulator required.
+      - name: Test (mobile unit)
+        run: pnpm --filter @famifinances/mobile test
+
       - name: Build (API)
         run: pnpm --filter @famifinances/api build
