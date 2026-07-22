@@ -69,7 +69,7 @@ command on Node `< 24.18.0` aborts before scripts run.
 - [X] T007 [US1] Run `pnpm install --frozen-lockfile`; confirm `argon2` and `mongodb-memory-server` build/resolve with **no** deprecation or `NODE_MODULE_VERSION` warnings (FR-005, SC-002) — depends on T003, T004
 - [X] T008 [US1] Run the full quality gate `pnpm --filter @famifinances/contracts build && pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @famifinances/mobile test && pnpm build`; all green — including the mobile unit suite, since root `pnpm test` covers only API unit+e2e (SC-001) — depends on T007
 - [X] T009 [US1] Verify fail-fast: `nvm use 20 && pnpm install` aborts with `ERR_PNPM_UNSUPPORTED_ENGINE` and runs no scripts, then `nvm use` back to v24.18.0 (SC-004) — depends on T003, T004
-- [ ] T010 [US1] ⏳ PENDING (Docker daemon not running in this session) — Build and run the API container: `docker build -f apps/api/Dockerfile -t famifinances-api:node24 .` then `docker run --rm famifinances-api:node24 node -v` prints `v24.18.0` and argon2 compiled cleanly (FR-003, FR-005) — depends on T005. Dockerfile edit (T005) is complete; run this once Docker Desktop is started.
+- [!] T010 [US1] ⛔ BLOCKED — Build attempted on Docker; base-image change (T005) is correct, but the build fails at the `build` stage with `nest: not found`. Root cause is a **pre-existing, Node-version-independent** Dockerfile bug: the `build` stage copies only root `/repo/node_modules`, while the pnpm workspace keeps the `nest` binary in `apps/api/node_modules/.bin/` (confirmed via the `deps` stage) and `.dockerignore` excludes `**/node_modules/`. Per scope discipline (Principle V) this is deferred to a **separate ticket**; AS#3 (container build/health check) stays blocked until that fix. Documented in Jira FAM-23 (comment) and PR #20.
 
 **Checkpoint**: US1 fully functional — monorepo green on v24.18.0, container on `node:24.18.0-alpine`, fail-fast proven. **This is the MVP.**
 
@@ -173,3 +173,12 @@ Task: "specs/002-project-foundation docs Node 20 -> v24.18.0" # T014
 - No new test files — verification reuses existing suites (config-only feature, Principle IV).
 - Reversible: `git checkout` the edited files and `git rm` the three new dotfiles (see quickstart Rollback).
 - Commit in English, conventional format, per constitution Development Workflow.
+
+---
+
+## Phase 6: Convergence
+
+> Appended by `/speckit-converge` (2026-07-22). Assessment of current code vs spec/plan/tasks.
+> All FR-001…FR-007 and SC-001…SC-004 are satisfied and verified. One acceptance-scenario gap remains.
+
+- [ ] T018 Fix `apps/api/Dockerfile` so the API image builds under `node:24.18.0-alpine` and its health check passes per US1/AC3 (partial) — the base-image change (T005) is correct, but `docker build` fails at the `build` stage with `nest: not found` because only the root `node_modules` is copied while the pnpm-workspace `nest` binary lives in `apps/api/node_modules/.bin/`; copy the workspace package `node_modules` from the `deps` stage (or reinstall in `build`), then confirm `docker run … node -v` → `v24.18.0` and a health check succeeds. No `HEALTHCHECK`/health endpoint currently exists, so establish/verify one as part of AC3. Pre-existing, Node-version-independent; tracked in Jira **FAM-25**.
