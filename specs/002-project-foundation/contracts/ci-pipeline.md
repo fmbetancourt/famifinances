@@ -15,7 +15,7 @@ workflow lives at `.github/workflows/ci.yml`.
 ## Environment
 
 - Runner: `ubuntu-latest`.
-- Node: 20 LTS (`actions/setup-node`).
+- Node: v24.18.0 (`actions/setup-node`).
 - Package manager: pnpm 10 (`pnpm/action-setup`), with pnpm store caching and the
   `mongodb-memory-server` binary cache (`~/.cache/mongodb-memory-server`).
 - No repository/production secrets required for build or test.
@@ -25,7 +25,7 @@ workflow lives at `.github/workflows/ci.yml`.
 ```text
 job: quality-gates
   1. checkout
-  2. setup pnpm + Node 20 (+ restore pnpm store & mongod caches)
+  2. setup pnpm + Node 24.18.0 (+ restore pnpm store & mongod caches)
   3. pnpm install --frozen-lockfile            # reproducible; runs approved native build scripts
   4. pnpm --filter @famifinances/contracts build  # dist for downstream typecheck
   5. pnpm -r typecheck                          # API + mobile (tsc --noEmit)

@@ -16,7 +16,7 @@ with its own gates, and (4) a documented, repeatable verification of the whole f
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x (strict, no `any`); Node.js 20 LTS; pnpm 10; Expo SDK (latest
+**Language/Version**: TypeScript 5.x (strict, no `any`); Node.js v24.18.0; pnpm 10; Expo SDK (latest
 stable) for mobile.
 
 **Primary Dependencies**:

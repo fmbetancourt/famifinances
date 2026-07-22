@@ -8,7 +8,7 @@ Proves the foundation is repeatable and that the quality gates work. References
 
 ## Prerequisites
 
-- Node.js 20 LTS, pnpm 10, Docker (for the container check), git.
+- Node.js v24.18.0, pnpm 10, Docker (for the container check), git.
 - No production secrets are needed for install/typecheck/lint/test/build.
 
 ## 1. Reproducible clone-to-green (SC-001, SC-006 · US1)
