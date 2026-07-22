@@ -2,8 +2,8 @@
   "ai": "claude",
   "ai_skills": true,
   "feature_numbering": "sequential",
-  "here": false,
+  "here": true,
   "integration": "claude",
   "script": "sh",
-  "speckit_version": "0.13.1"
+  "speckit_version": "0.13.4"
 }
