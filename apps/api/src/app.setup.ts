@@ -1,4 +1,9 @@
-import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
+import {
+  INestApplication,
+  RequestMethod,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import helmet from 'helmet';
 import { UniformErrorFilter } from './common/filters/uniform-error.filter';
 import { LoggingInterceptor } from './common/logging/logging.interceptor';
@@ -13,7 +18,11 @@ import { CORS_ALLOWED_ORIGINS, SECURITY_HEADERS } from './config/security';
  * equivalent default.)
  */
 export function configureApp(app: INestApplication): void {
-  app.setGlobalPrefix('api');
+  // The `/api` prefix applies to every route except the ops liveness probe, which must
+  // be reachable at the bare `/health` path for the Docker HEALTHCHECK (FAM-25 · FR-004).
+  app.setGlobalPrefix('api', {
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
+  });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   // SEC-01 · global security headers + no server-identifying banner (FR-001/FR-009).

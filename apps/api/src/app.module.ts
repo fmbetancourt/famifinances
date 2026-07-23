@@ -18,6 +18,7 @@ import { HistoryModule } from './history/history.module';
 import { CaptureModule } from './capture/capture.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { ExportModule } from './export/export.module';
+import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 
 @Module({
@@ -41,6 +42,7 @@ import { MailModule } from './mail/mail.module';
     CaptureModule,
     RemindersModule,
     ExportModule,
+    HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
