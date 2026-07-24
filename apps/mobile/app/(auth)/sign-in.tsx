@@ -75,6 +75,22 @@ export default function SignInScreen(): ReactElement {
       >
         {submitting ? <ActivityIndicator /> : <Text style={styles.buttonText}>Sign in</Text>}
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.link}
+        onPress={() => router.push('/(auth)/sign-up')}
+        accessibilityRole="link"
+      >
+        <Text style={styles.linkText}>Don&apos;t have an account? Create one</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.link}
+        onPress={() => router.push('/(auth)/forgot-password')}
+        accessibilityRole="link"
+      >
+        <Text style={styles.linkText}>Forgot your password?</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -115,4 +131,6 @@ const styles = StyleSheet.create({
   error: { color: '#b00020', marginVertical: 8 },
   button: { backgroundColor: '#1b5e20', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 8 },
   buttonText: { color: '#fff', fontWeight: '600' },
+  link: { alignItems: 'center', paddingVertical: 12 },
+  linkText: { color: '#1b5e20', fontWeight: '500' },
 });
