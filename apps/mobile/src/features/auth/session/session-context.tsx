@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ReactNode } from 'react';
 import { AppState } from 'react-native';
 import type { AccountSummary, TokenPair } from '@famifinances/contracts';
@@ -36,7 +36,7 @@ const LOADING: SessionState = { status: 'loading', user: null, familyId: null, r
 
 const SessionContext = createContext<SessionApi | null>(null);
 
-export function SessionProvider({ children }: { children: ReactNode }): JSX.Element {
+export function SessionProvider({ children }: { children: ReactNode }): ReactElement {
   const [state, setState] = useState<SessionState>(LOADING);
 
   // Mirror the latest reason for the AppState listener without re-subscribing.

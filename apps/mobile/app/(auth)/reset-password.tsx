@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ApiError, confirmPasswordReset } from '../../src/features/auth/api/client';
@@ -13,7 +13,7 @@ import {
  * real-time feedback. On success all sessions are revoked server-side, so the user signs
  * in fresh.
  */
-export default function ResetPasswordScreen(): JSX.Element {
+export default function ResetPasswordScreen(): ReactElement {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email ?? '');

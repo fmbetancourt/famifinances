@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { Redirect, Stack } from 'expo-router';
 import { useSession } from '../../src/features/auth/session/session-context';
 
@@ -6,7 +7,7 @@ import { useSession } from '../../src/features/auth/session/session-context';
  * users are redirected to sign-in. The onboarding screen itself is a placeholder in
  * FAM-8 (full Create/Join UI ships in FAM-9).
  */
-export default function FamilyLayout(): JSX.Element {
+export default function FamilyLayout(): ReactElement {
   const { status } = useSession();
 
   if (status === 'unauthenticated') {

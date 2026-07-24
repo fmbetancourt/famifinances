@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSession } from '../../src/features/auth/session/session-context';
 
@@ -7,7 +8,7 @@ import { useSession } from '../../src/features/auth/session/session-context';
  * delivered in FAM-9. A Sign Out escape hatch is provided so the placeholder is not a
  * dead end.
  */
-export default function OnboardingScreen(): JSX.Element {
+export default function OnboardingScreen(): ReactElement {
   const { signOut } = useSession();
 
   return (

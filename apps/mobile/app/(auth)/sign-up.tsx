@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ApiError, register } from '../../src/features/auth/api/client';
@@ -13,7 +13,7 @@ import {
  * (FR-003): unmet rules are listed and the submit stays disabled until all pass. On
  * success the user is routed to email verification.
  */
-export default function SignUpScreen(): JSX.Element {
+export default function SignUpScreen(): ReactElement {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

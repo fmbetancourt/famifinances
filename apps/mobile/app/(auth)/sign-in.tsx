@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ApiError, login } from '../../src/features/auth/api/client';
@@ -12,7 +12,7 @@ import type { SessionReason } from '../../src/features/auth/session/session-boot
  * to the launch redirect. Invalid credentials collapse to a single uniform message that
  * does not reveal which factor failed (FR-011); throttling shows a friendly notice (FR-010).
  */
-export default function SignInScreen(): JSX.Element {
+export default function SignInScreen(): ReactElement {
   const router = useRouter();
   const { establishSession, reason } = useSession();
   const [email, setEmail] = useState('');
@@ -75,6 +75,22 @@ export default function SignInScreen(): JSX.Element {
       >
         {submitting ? <ActivityIndicator /> : <Text style={styles.buttonText}>Sign in</Text>}
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.link}
+        onPress={() => router.push('/(auth)/sign-up')}
+        accessibilityRole="link"
+      >
+        <Text style={styles.linkText}>Don&apos;t have an account? Create one</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.link}
+        onPress={() => router.push('/(auth)/forgot-password')}
+        accessibilityRole="link"
+      >
+        <Text style={styles.linkText}>Forgot your password?</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -115,4 +131,6 @@ const styles = StyleSheet.create({
   error: { color: '#b00020', marginVertical: 8 },
   button: { backgroundColor: '#1b5e20', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 8 },
   buttonText: { color: '#fff', fontWeight: '600' },
+  link: { alignItems: 'center', paddingVertical: 12 },
+  linkText: { color: '#1b5e20', fontWeight: '500' },
 });
