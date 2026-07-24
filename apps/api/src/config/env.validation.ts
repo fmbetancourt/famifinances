@@ -1,5 +1,5 @@
 import { plainToInstance, Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min, validateSync } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Min, validateSync } from 'class-validator';
 
 /**
  * Typed environment schema. The app fails fast at boot if required secrets are
@@ -34,6 +34,13 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   MAIL_PROVIDER_API_KEY?: string;
+
+  // DEV-ONLY escape hatch. When 'true', the console mail stub additionally logs the full
+  // message body (including the OTP) so a developer can complete email verification against
+  // the stub locally. Intentionally overrides FR-027 for local debugging only; the adapter
+  // hard-refuses to honor it when NODE_ENV=production. Defaults to 'false' (OTP never logged).
+  @IsIn(['true', 'false'])
+  MAIL_DEV_LOG_OTP = 'false';
 
   // SEC-01 · security edge configuration (secure defaults; externally tunable, FR-010).
   // Comma-separated CORS origin allowlist; empty = deny all cross-origin browser access.
