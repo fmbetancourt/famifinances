@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ApiError } from '../../src/features/auth/api/client';
@@ -12,7 +12,7 @@ import { useSession } from '../../src/features/auth/session/session-context';
  * is delegated to the launch redirect, which sends the user to the app or onboarding
  * depending on family membership (FR-007).
  */
-export default function VerifyEmailScreen(): JSX.Element {
+export default function VerifyEmailScreen(): ReactElement {
   const router = useRouter();
   const { reload } = useSession();
   const [code, setCode] = useState('');

@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { AppState, Text } from 'react-native';
 import type { EmitterSubscription } from 'react-native';
@@ -12,7 +13,7 @@ const TOKENS: TokenPair = {
   expiresIn: 900,
 };
 
-function Probe(): JSX.Element {
+function Probe(): ReactElement {
   const { status, reason } = useSession();
   return <Text>{`${status}:${reason}`}</Text>;
 }

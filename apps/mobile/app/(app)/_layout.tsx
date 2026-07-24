@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { Redirect, Stack } from 'expo-router';
 import { useSession } from '../../src/features/auth/session/session-context';
 
@@ -6,7 +7,7 @@ import { useSession } from '../../src/features/auth/session/session-context';
  * authenticated users without a family are routed to onboarding (FR-007). Only a
  * fully-onboarded session renders the app stack.
  */
-export default function AppLayout(): JSX.Element {
+export default function AppLayout(): ReactElement {
   const { status, familyId } = useSession();
 
   if (status === 'unauthenticated') {

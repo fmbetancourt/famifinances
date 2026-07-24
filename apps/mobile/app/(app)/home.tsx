@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSession } from '../../src/features/auth/session/session-context';
 
@@ -8,7 +8,7 @@ import { useSession } from '../../src/features/auth/session/session-context';
  * `/auth/me` through `authFetch` and therefore transparently rotates an expired access
  * token (FR-002, SC-002) — and an explicit Sign Out (FR-005).
  */
-export default function HomeScreen(): JSX.Element {
+export default function HomeScreen(): ReactElement {
   const { user, reload, signOut } = useSession();
   const [busy, setBusy] = useState(false);
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ApiError, login } from '../../src/features/auth/api/client';
@@ -12,7 +12,7 @@ import type { SessionReason } from '../../src/features/auth/session/session-boot
  * to the launch redirect. Invalid credentials collapse to a single uniform message that
  * does not reveal which factor failed (FR-011); throttling shows a friendly notice (FR-010).
  */
-export default function SignInScreen(): JSX.Element {
+export default function SignInScreen(): ReactElement {
   const router = useRouter();
   const { establishSession, reason } = useSession();
   const [email, setEmail] = useState('');

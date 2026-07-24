@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Slot } from 'expo-router';
 import { SessionProvider, useSession } from '../src/features/auth/session/session-context';
@@ -6,7 +7,7 @@ import { SessionProvider, useSession } from '../src/features/auth/session/sessio
  * Renders a loading gate while the session is being restored from SecureStore (FR-008),
  * so no protected screen renders before the session status is known (data-model INV-4).
  */
-function RootNavigator(): JSX.Element {
+function RootNavigator(): ReactElement {
   const { status } = useSession();
 
   if (status === 'loading') {
@@ -20,7 +21,7 @@ function RootNavigator(): JSX.Element {
   return <Slot />;
 }
 
-export default function RootLayout(): JSX.Element {
+export default function RootLayout(): ReactElement {
   return (
     <SessionProvider>
       <RootNavigator />

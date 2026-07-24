@@ -6,6 +6,13 @@
     "noUnusedParameters": true,
     "skipLibCheck": true
   },
-  "include": ["app/**/*", "src/**/*", "expo-env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "app/**/*",
+    "src/**/*",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
